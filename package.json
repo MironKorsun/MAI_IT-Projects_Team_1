@@ -1,0 +1,19 @@
+{
+  "name": "vp-ts-ege",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Веб-платформа тестирующей системы ЕГЭ (ВП ТС ЕГЭ)",
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"npm:dev -w server\" \"npm:dev -w web\"",
+    "build": "npm run build -w web && npm run build -w server",
+    "start": "npm run start -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "test": "npm run test -w server && npm run test -w web",
+    "kim:validate": "npm run kim:validate -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": { "node": ">=20" }
+}
