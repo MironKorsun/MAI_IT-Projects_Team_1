@@ -1,0 +1,14 @@
+/*
+ * Администрирование: дополнения к общим таблицам.
+ * Шкала перевода (КИМ и шкалы) — компактная таблица в строку, как в опубликованных шкалах:
+ * сверху первичный балл, под ним тестовый балл (или отметка). Значения ниже порога — бледнее.
+ */
+.table.scale-table th,
+.table.scale-table td { padding: 0 4px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; }
+.table.scale-table { table-layout: fixed; }   /* столбцы баллов одной ширины */
+.table.scale-table th:first-child { width: 104px; padding: 0 16px 0 12px; text-align: left; }
+.table.scale-table thead th:not(:first-child) { color: var(--ink-2); }
+.table.scale-table tbody th { height: 48px; border-bottom: 0; }
+.table.scale-table tbody tr:hover td { background: none; }
+.table.scale-table td.below { color: var(--faint); }
+.table.scale-table td.pass { font-weight: 600; }
