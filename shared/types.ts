@@ -139,3 +139,142 @@ export interface SeatDto {
   };
   link?: string;
 }
+
+
+export interface RoomDto {
+  id: string;
+  number: string;
+  ppe: { id: string; code: string; name: string; region: string; tz: string };
+  session: { id: string; title: string; date: string; startLocal: string; durationMin: number; proctoring: boolean };
+  accessCode?: string;
+  accessCodeValidUntil?: string;
+  startedAt?: string;
+  seats: SeatDto[];
+  tasksCount: number;
+  messages: { id: string; text: string; at: string }[];
+}
+
+export type ResultsStatus = 'processing' | 'calculated' | 'approved' | 'published';
+
+export const RESULTS_STATUS_LABEL: Record<ResultsStatus, string> = {
+  processing: 'Обработка',
+  calculated: 'Рассчитаны',
+  approved: 'Утверждены',
+  published: 'Опубликованы',
+};
+
+export interface ExamSessionDto {
+  id: string;
+  examCode: string;
+  title: string;
+  date: string;
+  startLocal: string;
+  tz: string;
+  durationMin: number;
+  proctoring: boolean;
+  status: 'preparation' | 'active' | 'completed';
+  resultsStatus: ResultsStatus;
+  rooms: { id: string; number: string; ppeCode: string; participants: number }[];
+  variants: number;
+  attempts: number;
+  publishedAt?: string;
+  appealWindow?: { from: string; to: string };
+}
+
+export interface TaskResultDto {
+  number: number;
+  part: 1 | 2;
+  score: number;
+  maxScore: number;
+  answer?: string;
+}
+
+export interface MyResultDto {
+  sessionId: string;
+  examTitle: string;
+  date: string;
+  primaryScore: number;
+  maxPrimary: number;
+  testScore?: number;
+  grade?: number;
+  threshold: number;
+  passed: boolean;
+  tasks: TaskResultDto[];
+  publishedAt: string;
+  appealWindow: { from: string; to: string };
+}
+
+export type AppealStatus = 'registered' | 'reviewing' | 'accepted' | 'rejected';
+
+export const APPEAL_STATUS_LABEL: Record<AppealStatus, string> = {
+  registered: 'Зарегистрирована',
+  reviewing: 'На рассмотрении',
+  accepted: 'Удовлетворена',
+  rejected: 'Отклонена',
+};
+
+
+export interface AppealDto {
+  id: string;
+  number: string;
+  sessionId: string;
+  taskNumbers: number[];
+  text: string;
+  status: AppealStatus;
+  createdAt: string;
+  history: { status: AppealStatus; at: string; comment?: string }[];
+}
+
+export interface AuditEventDto {
+  id: string;
+  type: string;
+  category: string;
+  at: string;
+  actorRole: string;
+  actorId?: string;
+  object?: string;
+  ppeCode?: string;
+  roomNumber?: string;
+  requestId?: string;
+  result: 'ok' | 'error';
+  details?: string;
+  hash: string;
+}
+
+export interface Problem {
+  type: string;
+  title: string;
+  status: number;
+  detail?: string;
+  instance?: string;
+  code: string;
+  requestId?: string;
+  errors?: { pointer: string; detail: string }[];
+  [k: string]: unknown;
+}
+
+export interface WsEvent<T = unknown> {
+  eventId: string;
+  type:
+    | 'room.started'
+    | 'attempt.timeChanged'
+    | 'attempt.terminated'
+    | 'room.message'
+    | 'participant.statusChanged'
+    | 'integrity.event'
+    | 'workstation.checked'
+    | 'auth.lockout';
+  occurredAt: string;
+  resourceId: string;
+  data: T;
+}
+
+export const INTEGRITY_LABEL: Record<string, string> = {
+  fullscreenExit: 'Выход из полноэкранного режима',
+  visibilityHidden: 'Скрытие вкладки',
+  windowBlur: 'Потеря фокуса окна',
+  copy: 'Попытка копирования',
+  paste: 'Вставка из внешнего источника',
+  print: 'Попытка печати',
+  contextMenu: 'Вызов контекстного меню',
+};
