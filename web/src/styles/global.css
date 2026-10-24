@@ -1,0 +1,220 @@
+/*
+ * Дизайн-система ВП ТС ЕГЭ «Mint Glass»: светлое матовое стекло в духе референса Inventory.
+ * ≈90 % поверхности — белые и близкие к белому тона; мятный #98fb98 — только мягкое свечение фона,
+ * прогресс и «выполнено». Карточки — полупрозрачные, с белой кромкой сверху; элементы управления —
+ * заливка ≈ фон, белый обод по кругу и мягкое внутреннее свечение; выбранное — сплошной белый.
+ * Типографика: Onest (заголовки, цифры) + Golos Text (текст и интерфейс).
+ * Контраст текста ≥ 4,5:1 (ТЗ КЧ NFR-26); контрастная тема ≥ 7:1.
+ * backdrop-filter — только у «плавающих» слоёв (.glass-float) и затемнения диалога.
+ */
+
+ /* ---------- Токены (спецификация, раздел A) ---------- */
+:root {
+  color-scheme: light;
+
+  /* ── Type ── */
+  --font-display: 'Onest Variable', 'Golos Text Variable', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font: 'Golos Text Variable', 'Onest Variable', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; /* Onest supplies ← → ↗ ≤ ≥ */
+  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  /* ── Neutrals (contrast on white / canvas / card) ── */
+  --ink: #1b1d26;           /* 16.8 / 14.6 / 15.7 */
+  --ink-2: #444856;         /* 9.1 / 7.9 / 8.5 */
+  --muted: #5b5f6e;         /* 6.35 / 5.53 / 5.95 */
+  --faint: #676b79;         /* 5.31 / 4.62 / 4.97 — lightest TEXT colour (placeholders, chevrons, ticks) */
+  --field-stroke: #7f857f;  /* 3.77 / 3.28 / 3.54 — typed inputs, checkboxes, exam task cells */
+  --line: rgba(18, 28, 20, 0.07);
+  --line-strong: rgba(18, 28, 20, 0.12);
+
+    /* ── Canvas (Inventory frame background; mint replaces yellow, aqua-mint replaces peach) ── */
+  --canvas: #edf0ec;
+  --canvas-hi: #f4f6f2;
+  --mint-rgb: 152, 251, 152;   /* #98fb98 */
+  --aqua-rgb: 182, 249, 224;   /* #b6f9e0 */
+  --canvas-bg:
+    radial-gradient(46% 60% at 12% 0%, rgba(var(--mint-rgb), 0.18) 0%, rgba(var(--mint-rgb), 0.07) 42%, rgba(var(--mint-rgb), 0) 72%),
+    radial-gradient(32% 44% at 56% 0%, rgba(var(--aqua-rgb), 0.16) 0%, rgba(var(--aqua-rgb), 0) 72%),
+    linear-gradient(180deg, var(--canvas-hi) 0%, var(--canvas) 48%);
+  /* composite: glow peak #e3f7e2, second glow #eaf6ef, lower half #edf0ec */
+
+  /* ── Glass: control (REF: fill = background, all-round 1px white rim, inner glow on 4 sides, no shadow) ── */
+  --gc-fill: rgba(255, 255, 255, 0.10);
+  --gc-fill-hover: rgba(255, 255, 255, 0.38);
+  --gc-fill-press: rgba(255, 255, 255, 0.52);
+  --gc-rim: rgba(255, 255, 255, 0.88);
+  --gc-glow: inset 0 0 14px rgba(255, 255, 255, 0.75);
+  /* step-up when a control sits on a card / floating bar ("tile") */
+  --gt-fill: rgba(255, 255, 255, 0.62);
+  --gt-fill-hover: rgba(255, 255, 255, 0.86);
+  --gt-ring: 0 0 0 1px rgba(18, 28, 20, 0.06);
+  /* context vars read by every control; .glass / .glass-float / .tile-accent / .dialog override them */
+  --ctl-fill: var(--gc-fill);
+  --ctl-fill-hover: var(--gc-fill-hover);
+  --ctl-ring: 0 0 #0000;
+
+    /* ── Glass: card (REF: ≈36% white over a darker canvas, top edge lit, sides dim, no bottom rim, no glow) ── */
+  --gk-fill: rgba(255, 255, 255, 0.50);
+  --gk-fill-hover: rgba(255, 255, 255, 0.64);
+  --gk-thick: rgba(255, 255, 255, 0.88);   /* text-heavy: exam task card, dialogs, notices */
+  --gk-edge: inset 0 1px 0 #fff, inset 1px 0 0 rgba(255, 255, 255, 0.6), inset -1px 0 0 rgba(255, 255, 255, 0.6);
+  --gk-outline: 0 0 0 1px rgba(18, 28, 20, 0.045);   /* REF −3 L fringe (≈ −6 at native scale) */
+  --gk-shadow: 0 1px 2px rgba(18, 28, 20, 0.03), 0 6px 16px -10px rgba(18, 28, 20, 0.06); /* REF contact band */
+  --th-sticky: #f6f8f6;                     /* opaque sticky table header = card composite */
+
+  /* ── Glass: floating (the ONLY backdrop-filter besides the dialog overlay) ── */
+  --gf-fill: rgba(255, 255, 255, 0.72);
+  --gf-blur: blur(20px) saturate(140%);
+  --gf-shadow: 0 1px 2px rgba(18, 28, 20, 0.04), 0 18px 44px -20px rgba(18, 28, 20, 0.20);
+
+  /* ── Solid white = selected / active (REF active rail tile, avatar) ── */
+  --solid: #ffffff;
+  --solid-shadow: 0 1px 2px rgba(18, 28, 20, 0.08), 0 3px 8px -2px rgba(18, 28, 20, 0.06);
+
+    /* ── Mint ramp (OKLCH h144→156, chroma tapered) ── */
+  --mint-25: #f6fef5;
+  --mint-50: #eafdea;
+  --mint-100: #d8fcd6;
+  --mint-200: #bffdbd;
+  --mint-300: #98fb98;  /* anchor: glows, progress start, brand button, checked box. NEVER text/lines (1.27:1) */
+  --mint-400: #85e189;
+  --mint-500: #5fbd6d;  /* gradient mid-stop only */
+  --mint-600: #3f9557;  /* ≥3:1 marks/borders: 3.72 white, 3.24 canvas, 3.48 card */
+  --mint-700: #2b7444;  /* ≥4.5:1 text/icons/focus: 5.70 white, 4.96 canvas, 5.11 on mint-100 */
+  --mint-800: #1c5734;  /* ≥7:1 text on mint tints */
+  --mint-900: #113923;
+
+    /* ── Brand semantics: green = progress / done / reached. Never "attention". ── */
+  --brand-line: var(--mint-600);
+  --brand-icon: var(--mint-700);
+  --brand-ink: var(--mint-800);
+  --brand-wash: rgba(var(--mint-rgb), 0.14);
+  --focus: var(--mint-700);
+  --focus-w: 2.5px;
+  --focus-halo: rgba(var(--mint-rgb), 0.45);
+  --selection: rgba(var(--mint-rgb), 0.5);
+  --grad-progress: linear-gradient(90deg, var(--mint-300) 0%, var(--mint-500) 55%, var(--mint-600) 100%);
+  --grad-brand: linear-gradient(180deg, #b4fcb4 0%, #98fb98 100%);
+  --grad-brand-hover: linear-gradient(180deg, #a6fba6 0%, #8cf28c 100%);
+  --glow-brand: 0 0 12px rgba(var(--mint-rgb), 0.55);        /* REF yellow button glow */
+  --glow-brand-hover: 0 0 16px rgba(var(--mint-rgb), 0.70);
+  --grad-mark: linear-gradient(145deg, #c8fcc6 0%, #98fb98 100%);
+  --grad-accent-tile:
+    radial-gradient(120% 100% at 0% 0%, rgba(var(--mint-rgb), 0.55) 0%, rgba(var(--mint-rgb), 0.18) 45%, rgba(var(--mint-rgb), 0) 75%),
+    radial-gradient(70% 80% at 100% 100%, rgba(var(--aqua-rgb), 0.35) 0%, rgba(var(--aqua-rgb), 0) 70%),
+    rgba(255, 255, 255, 0.62);
+  /* peak #c3fac3: ink-2 7.71, muted 5.38, focus 4.83 */
+
+    /* ── Status ── */
+  --ok: var(--mint-700);
+  --ok-ink: var(--mint-800);
+  --ok-soft: rgba(var(--mint-rgb), 0.30);     /* #e0fee0 on white; ok-ink on it 7.9 (7.5 on card) */
+  --warn: #7d5b17;  --warn-soft: #f6efe2;     /* 5.43 */
+  --bad: #9c4038;   --bad-soft: #f8eceb;      /* 5.68 */
+  --accent: #4d5570; --accent-ink: #3a4157; --accent-soft: rgba(77, 85, 112, 0.10); /* slate: flags, anomalies, accommodations */
+  --info-soft: rgba(18, 28, 20, 0.06);
+
+  /* ── Charts ── */
+  --series: #677191;               /* 4.53 on card */
+  --series-pass: var(--mint-600);  /* 3.48 on card */
+  --series-muted: #878da0;         /* 3.10 on card — inside cards only */
+  --series-track: rgba(27, 29, 38, 0.07);
+  --chart-grid: rgba(18, 28, 20, 0.06);
+
+  /* ── Geometry ── */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
+  --r-panel: 28px; --r-card: 24px; --r-bar: 22px; --r-tile: 16px; --r-ctl-lg: 16px;
+  --r-ctl: 14px; --r-ctl-sm: 12px; --r-seg-item: 10px; --r-xs: 8px; --r-check: 6px; --r-pill: 999px;
+  --h-sm: 40px; --h-md: 44px; --h-lg: 48px; --h-xl: 56px; --h-answer: 64px;
+  --gutter: 12px; --cluster: 8px; --section: 32px; --section-lg: 48px;
+  --sidebar-w: 248px; --rail-w: 72px; --page-x: 40px;
+  --content-max: 1360px; --portal-max: 1240px; --results-max: 960px;
+  --exam-nav: 272px; --exam-card: 720px; --exam-gap: 24px; --measure: 640px; /* ≈70 Cyrillic chars @18px */
+
+  /* ── Motion ── */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-1: 140ms; --dur-2: 200ms; --dur-3: 280ms; --dur-enter: 480ms; --stagger: 40ms;
+  --ease: var(--ease-out);  /* legacy alias: used inline in SessionDetail.tsx */
+  --dur: var(--dur-3);      /* legacy alias */
+}
+
+/* Состояния попыток для полосы мониторинга (B.12, SHADE): спокойная палитра, цвет всегда с подписью */
+:root {
+  --st-assigned: rgba(27, 29, 38, 0.10);
+  --st-waiting: #c3c7d3;
+  --st-loading: #9aa0b4;
+  --st-in-progress: #677191;
+  --st-finished: #3f9557;
+  --st-time-expired: #85e189;
+  --st-removed: #9c4038;
+  --st-not-completed: #7d5b17;
+}
+
+/* ---------- Контрастная тема для участников с ОВЗ (ТЗ КЧ FR-20, NFR-26: текст ≥ 7:1) ---------- */
+:root[data-theme='contrast'] {
+  --ink: #000; --ink-2: #111; --muted: #2b2b2b; --faint: #444; --field-stroke: #000;
+  --line: #000; --line-strong: #000;
+  --canvas: #fff; --canvas-hi: #fff; --canvas-bg: none;
+  --gc-fill: #fff; --gc-fill-hover: #f0f0f0; --gc-fill-press: #e6e6e6; --gc-rim: #000; --gc-glow: 0 0 #0000;
+  --gt-fill: #fff; --gt-fill-hover: #f0f0f0; --gt-ring: 0 0 #0000;
+  --gk-fill: #fff; --gk-fill-hover: #fff; --gk-thick: #fff; --gk-edge: 0 0 #0000; --gk-outline: 0 0 #0000; --gk-shadow: 0 0 #0000;
+  --th-sticky: #fff;
+  --gf-fill: #fff; --gf-blur: none; --gf-shadow: 0 0 #0000;
+  --solid-shadow: 0 0 #0000;
+  --brand-line: #1c5734; --brand-icon: #1c5734; --brand-ink: #1c5734; --brand-wash: #f1fbf1;
+  --focus: #000; --focus-w: 3px; --focus-halo: transparent; --selection: #c6fdc6;
+  --grad-progress: linear-gradient(#1c5734, #1c5734);
+  --grad-brand: linear-gradient(#fff, #fff); --grad-brand-hover: linear-gradient(#f1fbf1, #f1fbf1);
+  --glow-brand: 0 0 #0000; --glow-brand-hover: 0 0 #0000;
+  --grad-mark: linear-gradient(#fff, #fff); --grad-accent-tile: #fff;
+  --ok: #00552c; --ok-ink: #00552c; --ok-soft: #e3f7e3;
+  --warn: #5c3a00; --warn-soft: #fff4dc; --bad: #8a0d0d; --bad-soft: #ffe9e9;
+  --accent: #0a2a9e; --accent-ink: #0a2a9e; --accent-soft: #e5e9ff;
+  --series: #3a4157; --series-pass: #1c5734; --series-muted: #5b5f6e; --series-track: #d9d9d9; --chart-grid: #cfcfcf;
+}
+/* real 2px borders (border-box: borders replace the 1px rim) */
+:root[data-theme='contrast'] :is(.glass, .glass-float, .tile, .tile-accent, .dialog, .toast, .menu, .notice, .user-card,
+  .btn:not(.btn-primary):not(.btn-ghost), .seg, .pill, .select, .timer, .task-cell, .brand-mark) { border: 2px solid #000; }
+:root[data-theme='contrast'] :is(.input, .textarea, .input-answer) { border: 2px solid #000; background: #fff; }
+:root[data-theme='contrast'] .nav-item[aria-current='page'],
+:root[data-theme='contrast'] .seg [aria-pressed='true'],
+:root[data-theme='contrast'] .seg [aria-current='page'] { outline: 2px solid #000; outline-offset: -2px; }
+:root[data-theme='contrast'] .backdrop { display: none; }
+:root[data-theme='contrast'] .btn-icon[aria-pressed='true'], :root[data-theme='contrast'] .btn-toggle[aria-pressed='true'] { background: #000; color: #fff; border-color: #000; }
+:root[data-theme='contrast'] .btn-icon[aria-pressed='true'] svg { color: #fff; }
+:root[data-theme='contrast'] .btn-primary:disabled { background: #fff; border: 2px dashed #000; color: #000; }
+
+/* ---------- Без прозрачности, без backdrop-filter, повышенный контраст, принудительные цвета ---------- */
+@media (prefers-reduced-transparency: reduce) {
+  :root:not([data-theme='contrast']) {
+    --canvas-bg: linear-gradient(180deg, var(--canvas-hi), var(--canvas));
+    --gc-fill: #eff2ee; --gc-fill-hover: #f6f8f5; --gt-fill: #fbfcfb; --gt-fill-hover: #fff;
+    --gk-fill: #f6f8f6; --gk-fill-hover: #fafbfa; --gk-thick: #fdfdfd;
+    --gf-fill: #fbfcfb; --gf-blur: none;
+    --grad-accent-tile: linear-gradient(135deg, #dcf8db 0%, #eef9ee 60%, #f3f8f4 100%);
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root { --gf-fill: rgba(255, 255, 255, 0.94); }
+}
+@media (prefers-contrast: more) {
+  :root:not([data-theme='contrast']) {
+    --gk-outline: 0 0 0 1px rgba(18, 28, 20, 0.35); --ctl-ring: 0 0 0 1px rgba(18, 28, 20, 0.45);
+    --gt-ring: 0 0 0 1px rgba(18, 28, 20, 0.45); --line: rgba(18, 28, 20, 0.2);
+  }
+}
+@media (forced-colors: active) {
+  .glass, .glass-float, .tile, .tile-accent, .pill, .seg, .btn, .select, .input, .textarea, .task-cell, .timer, .dialog, .toast, .menu, .notice {
+    border: 1px solid CanvasText !important; background: Canvas !important; color: CanvasText !important;
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  }
+  .backdrop { display: none; }
+  :focus-visible { outline: 2px solid Highlight !important; outline-offset: 2px; }
+  .task-cell[aria-current='step'] { outline: 3px solid Highlight; }
+  /* «есть ответ» и прогресс не должны держаться только на фоне, который режим стирает */
+  .task-cell.has, .task-cell.mini.has { forced-color-adjust: none; background: Highlight !important; color: HighlightText !important; border-color: Highlight !important; }
+  .task-cell.has .tick { color: HighlightText; }
+  .progress { border: 1px solid CanvasText; }
+  .progress > i { forced-color-adjust: none; background: Highlight; }
+}
