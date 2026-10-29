@@ -119,3 +119,141 @@ export function Modal({
       document.removeEventListener('keydown', onKey);
       if (opener?.isConnected) opener.focus?.();
     };
+      }, [opener]);
+  return (
+    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && close.current?.()}>
+      <div ref={ref} className={`dialog${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={labelledBy} tabIndex={-1}>
+        <div className="dialog-head">
+          <h2 id={labelledBy} className="h2">
+            {title}
+          </h2>
+          {onClose && (
+            <button type="button" className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Закрыть" title="Закрыть">
+              <Icon name="x" />
+            </button>
+          )}
+        </div>
+        <div className="dialog-body">{children}</div>
+        {footer && <div className="dialog-foot">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+/** Двухшаговое подтверждение необратимых действий (ТЗ КЧ 6.6). */
+export function Confirm({
+  title,
+  children,
+  confirmLabel,
+  danger,
+  onConfirm,
+  onClose,
+  secondStep = true,
+}: {
+  title: string;
+  children: ReactNode;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => Promise<unknown> | void;
+  onClose: () => void;
+  secondStep?: boolean;
+  }) {
+  const [step, setStep] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<unknown>();
+  const go = async () => {
+    if (secondStep && step === 1) return setStep(2);
+    setBusy(true);
+    setErr(undefined);
+    try {
+      await onConfirm();
+      onClose();
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+    return (
+    <Modal
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Отмена
+          </button>
+          <button type="button" className={`btn ${danger ? 'btn-danger solid' : 'btn-primary'}`} onClick={go} disabled={busy}>
+            {busy ? <span className="spinner" /> : null}
+            {step === 1 && secondStep ? 'Продолжить' : confirmLabel}
+          </button>
+        </>
+      }
+    >
+      <div className="stack" style={{ '--gap': '12px' } as CSSProperties}>
+        {children}
+        {step === 2 && (
+          <div className="notice warn top fade-in" role="alert">
+            <Icon name="alert" className="lead-icon" size={20} />
+            <span className="grow">Подтвердите ещё раз: действие нельзя отменить.</span>
+          </div>
+        )}
+        {err ? <ErrorBox error={err} /> : null}
+      </div>
+    </Modal>
+  );
+}
+
+/** Сообщение об ошибке в едином формате (FR-51). */
+export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const d = describeError(error);
+  return (
+    <div className="notice bad top fade-in" role="alert">
+      <Icon name="alert" className="lead-icon" size={20} />
+      <div className="stack grow" style={{ '--gap': '4px', minWidth: 0 } as CSSProperties}>
+        <span className="strong">{d.title}</span>
+        <span className="small muted">{d.action}</span>
+        {d.code && <span className="tiny muted mono">Код обращения: {d.code}</span>}
+      </div>
+      {onRetry && (
+        <button type="button" className="btn" onClick={onRetry}>
+          Повторить
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------- уведомления ----------
+interface Toast {
+  id: number;
+  text: ReactNode;
+  tone?: 'ok' | 'bad' | 'info';
+}
+const TOAST_ICON: Record<NonNullable<Toast['tone']>, IconName> = { ok: 'checkCircle', bad: 'alert', info: 'info' };
+const ToastCtx = createContext<(text: ReactNode, tone?: Toast['tone']) => void>(() => undefined);
+export const useToast = () => useContext(ToastCtx);
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [items, setItems] = useState<Toast[]>([]);
+  const push = useCallback((text: ReactNode, tone: Toast['tone'] = 'info') => {
+    const id = Date.now() + Math.random();
+    setItems((xs) => [...xs, { id, text, tone }]);
+    setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), 5200);
+  }, []);
+  return (
+    <ToastCtx.Provider value={push}>
+      {children}
+      <div className="toasts" role="status" aria-live="polite">
+        {items.map((t) => (
+          <div key={t.id} className={`toast ${t.tone ?? 'info'}`}>
+            <Icon name={TOAST_ICON[t.tone ?? 'info']} size={20} />
+            <div className="grow" style={{ minWidth: 0 }}>
+              {t.text}
+            </div>
+          </div>
+        ))}
+      </div>
+    </ToastCtx.Provider>
+  );
+}
