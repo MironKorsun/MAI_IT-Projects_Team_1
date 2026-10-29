@@ -175,3 +175,228 @@ export default async function adminRoutes(app: FastifyInstance) {
       return { validationId: errors.length ? undefined : validationId, hash, rows: rows.length, errors };
     },
   );
+
+    /** Применение только проверенного файла целиком, в одной транзакции (FR-45). */
+  app.post<{ Params: { id: string }; Body: { validationId: string; hash: string } }>(
+    '/exam-sessions/:id/allocation',
+    {
+      ...admin,
+      schema: {
+        body: { type: 'object', additionalProperties: false, required: ['validationId', 'hash'], properties: { validationId: { type: 'string' }, hash: { type: 'string' } } },
+      },
+    },
+    async (req) => {
+      const v = validations.get(req.body.validationId);
+      if (!v || v.sessionId !== req.params.id || v.hash !== req.body.hash) throw new ApiError(409, 'INVALID_STATE', 'Файл не проверен или изменён');
+      const session = byId(db.sessions, v.sessionId)!;
+      const attempts: Attempt[] = v.rows.map((r) => ({
+        id: uuid(),
+        sessionId: session.id,
+        participantId: r.participantId,
+        roomId: r.roomId,
+        workstationId: r.workstationId,
+        state: 'assigned',
+        compensationMin: 0,
+        compensations: [],
+        answers: {},
+        answerHistory: {},
+        lastSeq: 0,
+        notes: {},
+        flags: [],
+        downtimeSec: 0,
+        integrity: [],
+      }));
+      db.attempts = db.attempts.filter((a) => a.sessionId !== session.id).concat(attempts);
+      for (const rid of session.roomIds) for (const w of db.workstations.filter((x) => x.roomId === rid)) w.secret = secret();
+      validations.delete(req.body.validationId);
+      audit({ type: 'admin.allocationApplied', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: session.id, details: `${attempts.length} участников` });
+      persist();
+      return { applied: attempts.length };
+    },
+  );
+
+  // ---------- персонал (FR-46, FR-07) ----------
+  app.get('/staff', admin, async () =>
+    db.staff.map((u) => ({ id: u.id, login: u.login, fullName: u.fullName, roles: u.roles, blocked: u.blocked, createdAt: u.createdAt })),
+  );
+
+  app.post<{ Body: { login: string; fullName: string; password: string; roles: StaffRole[] } }>(
+    '/staff',
+    {
+      ...admin,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['login', 'fullName', 'password', 'roles'],
+          properties: {
+            login: { type: 'string', pattern: '^[a-z0-9._-]{3,32}$' },
+            fullName: { type: 'string', minLength: 3, maxLength: 120 },
+            password: { type: 'string', minLength: 12, maxLength: 128 },
+            roles: { type: 'array', minItems: 1, items: { type: 'string', enum: STAFF_ROLES } },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const b = req.body;
+      if (db.staff.some((u) => u.login === b.login)) throw invalid([{ pointer: '/login', detail: 'Логин занят' }], 'VALIDATION_FAILED', 422);
+      if (db.participants.some((p) => p.code === b.login)) throw new ApiError(422, 'ROLE_CONFLICT');
+      const u = { id: uuid(), login: b.login, fullName: b.fullName, passwordHash: hashPassword(b.password), roles: b.roles, blocked: false, subjects: ['math-profile'], createdAt: nowIso() };
+      db.staff.push(u);
+      audit({ type: 'admin.staffCreated', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: u.login, details: b.roles.join(',') });
+      persist();
+      return { id: u.id, login: u.login, fullName: u.fullName, roles: u.roles, blocked: u.blocked, createdAt: u.createdAt };
+    },
+  );
+
+  app.patch<{ Body: { id: string; roles?: StaffRole[]; blocked?: boolean } }>(
+    '/staff',
+    {
+      ...admin,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id'],
+          properties: {
+            id: { type: 'string' },
+            roles: { type: 'array', minItems: 1, items: { type: 'string', enum: [...STAFF_ROLES, 'participant'] } },
+            blocked: { type: 'boolean' },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const u = byId(db.staff, req.body.id);
+      if (!u) throw notFound();
+      if (req.body.roles?.includes('participant' as StaffRole)) throw new ApiError(422, 'ROLE_CONFLICT', 'Учётной записи персонала нельзя назначить роль участника');
+      if (req.body.roles) u.roles = req.body.roles;
+      if (req.body.blocked !== undefined) {
+        u.blocked = req.body.blocked;
+        if (u.blocked) revokeUserSessions(u.id);
+      }
+      audit({ type: req.body.blocked ? 'admin.staffBlocked' : 'admin.rolesChanged', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: u.login, details: u.roles.join(',') });
+      persist();
+      return { id: u.id, login: u.login, fullName: u.fullName, roles: u.roles, blocked: u.blocked, createdAt: u.createdAt };
+    },
+  );
+
+  // ---------- участники и особые условия (FR-47) ----------
+  // Фильтр по особым условиям — до среза первых 100, total — число всех совпадений
+  app.get<{ Querystring: { q?: string; cond?: string } }>('/participants', admin, async (req) => {
+    const q = (req.query.q ?? '').toLowerCase();
+    const cond = req.query.cond === 'any' || req.query.cond === 'none' ? req.query.cond : undefined;
+    const has = (s: SpecialConditions) => s.extraTime || s.scale !== 100 || s.contrast;
+    const all = db.participants.filter(
+      (p) => (!q || p.code.includes(q) || p.lastName.toLowerCase().includes(q)) && (!cond || (cond === 'any') === has(p.specialConditions)),
+    );
+    return {
+      total: all.length,
+      items: all.slice(0, 100).map((p) => ({ id: p.id, code: p.code, displayName: displayName(p), specialConditions: p.specialConditions, regionCode: p.regionCode })),
+    };
+  });
+
+  app.put<{ Params: { id: string }; Body: SpecialConditions }>(
+    '/participants/:id/special-conditions',
+    {
+      ...admin,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['extraTime', 'scale', 'contrast'],
+          properties: { extraTime: { type: 'boolean' }, scale: { type: 'integer', enum: [100, 150, 200] }, contrast: { type: 'boolean' } },
+        },
+      },
+    },
+    async (req) => {
+      const p = byId(db.participants, req.params.id);
+      if (!p) throw notFound();
+      if (req.body.extraTime !== p.specialConditions.extraTime && db.attempts.some((a) => a.participantId === p.id && a.t0 && a.state === 'inProgress'))
+        throw new ApiError(409, 'INVALID_STATE', 'Продолжительность нельзя изменить после начала попытки');
+      p.specialConditions = req.body;
+      audit({ type: 'admin.specialConditions', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: p.code, details: JSON.stringify(req.body) });
+      persist();
+      return p.specialConditions;
+    },
+  );
+
+  /** Публикация результатов и окно апелляции — 2 рабочих дня (FR-48). */
+  app.post<{ Params: { id: string } }>('/exam-sessions/:id/results/publish', admin, async (req) => {
+    const s = byId(db.sessions, req.params.id);
+    if (!s) throw notFound();
+    refreshSessionStatus(s.id);
+    if (s.resultsStatus !== 'approved') throw new ApiError(409, 'RESULTS_NOT_APPROVED');
+    const now = new Date();
+    s.resultsStatus = 'published';
+    s.status = 'completed';
+    s.publishedAt = now.toISOString();
+    s.appealWindow = { from: now.toISOString(), to: addWorkingDays(now, 2).toISOString() };
+    for (const r of db.results.filter((x) => x.sessionId === s.id)) r.status = 'published';
+    audit({ type: 'admin.resultsPublished', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: s.id });
+    persist();
+    return sessionDto(s);
+  });
+
+  /** Выгрузка результатов CSV с контрольной суммой, без ПДн (FR-53). */
+  app.get<{ Params: { id: string } }>('/exam-sessions/:id/results/export', admin, async (req, reply) => {
+    const s = byId(db.sessions, req.params.id);
+    if (!s || s.resultsStatus !== 'published') throw new ApiError(409, 'RESULTS_NOT_APPROVED');
+    const rows = ['attempt_id;region;primary_score;test_score;grade;passed;scale_version'];
+    for (const r of db.results.filter((x) => x.sessionId === s.id)) {
+      const p = byId(db.participants, r.participantId)!;
+      rows.push([sha256(r.attemptId).slice(0, 16), p.regionCode, r.primaryScore, r.testScore ?? '', r.grade ?? '', r.passed ? 1 : 0, r.scaleVersion].join(';'));
+    }
+    const body = rows.join('\n') + '\n';
+    audit({ type: 'data.exported', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: s.id });
+    return reply
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', `attachment; filename="results-${s.date}.csv"`)
+      .header('x-checksum-sha256', sha256(body))
+      .send('﻿' + body);
+  });
+
+  // ---------- КИМ и шкалы ----------
+  app.post<{ Body: RawVariant }>('/kim/imports', { ...admin, bodyLimit: 50 * 1024 * 1024 }, async (req) => {
+    const errors = validateVariant(req.body);
+    if (errors.length) throw invalid(errors, 'IMPORT_INVALID', 422);
+    const refs = loadReferences(resolve(config.kimDir, 'math-profile-2026'));
+    const v = buildVariant(req.body, refs);
+    db.variants.push(v);
+    audit({ type: 'kim.imported', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: v.title, details: `sha256 ${v.checksum.slice(0, 16)}` });
+    persist();
+    return { id: v.id, number: v.number, title: v.title, tasks: v.keys.length, checksum: v.checksum };
+  });
+
+  app.post<{ Body: unknown }>('/kim/validate', { ...admin, bodyLimit: 50 * 1024 * 1024 }, async (req) => {
+    const t0 = performance.now();
+    const errors = validateVariant(req.body);
+    return { valid: !errors.length, errors, ms: Math.round(performance.now() - t0) };
+  });
+
+  /** Исправление эталона после экзамена и перепроверка затронутых работ (FR-33). */
+  app.put<{ Params: { variantId: string; taskId: string }; Body: { values: string[]; reason: string } }>(
+    '/kim/variants/:variantId/tasks/:taskId/key',
+    {
+      ...admin,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['values', 'reason'],
+          properties: { values: { type: 'array', minItems: 1, items: { type: 'string', maxLength: 50 } }, reason: { type: 'string', minLength: 3 } },
+        },
+      },
+    },
+    async (req) => {
+      const v = byId(db.variants, req.params.variantId);
+      const t = v?.keys.find((x) => x.id === req.params.taskId);
+      if (!v || !t || t.part !== 1) throw notFound();
+      t.correct = [...(t.correct ?? []), { version: (t.correct?.length ?? 0) + 1, values: req.body.values, reason: req.body.reason, at: nowIso() }];
+      const affected = db.attempts.filter((a) => a.variantId === v.id && db.results.some((r) => r.attemptId === a.id)).map((a) => a.id);
+      recalcAttempts(affected, `Исправление эталона задания ${t.number}: ${req.body.reason}`);
+      audit({ type: 'kim.keyCorrected', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: `${v.title} / ${t.number}`, details: req.body.reason });
+      return { recalculated: affected.length };
+    },
+  );
