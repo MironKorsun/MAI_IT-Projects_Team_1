@@ -139,3 +139,111 @@ export async function refresh(req: FastifyRequest, reply: FastifyReply, kind: Pr
   setRefreshCookie(reply, kind, next);
   return { accessToken: await accessToken({ ...s.principal, sid }), expiresIn: config.accessTtlSec };
 }
+
+export function logout(req: FastifyRequest, reply: FastifyReply, kind: PrincipalKind) {
+  const token = req.cookies[REFRESH_COOKIE[kind]];
+  if (token) {
+    const s = sessions.get(token.split('.')[0]);
+    if (s) s.revoked = true;
+  }
+  if (req.principal) {
+    const s = sessions.get(req.principal.sid);
+    if (s) s.revoked = true;
+  }
+  reply.clearCookie(REFRESH_COOKIE[kind], { path: '/api/v1/auth' });
+}
+
+export function revokeUserSessions(sub: string) {
+  for (const s of sessions.values()) if (s.principal.sub === sub) s.revoked = true;
+}
+
+export function revokeAttemptSessions(attemptId: string, exceptSid?: string) {
+  for (const s of sessions.values()) if (s.principal.attemptId === attemptId && s.sid !== exceptSid) s.revoked = true;
+}
+
+export async function verifyAccess(token: string): Promise<Principal | undefined> {
+  try {
+    const { publicKey } = await keyPair();
+    const { payload } = await jwtVerify(token, publicKey, { issuer: ISS, audience: AUD, algorithms: ['EdDSA'] });
+    const s = sessions.get(String(payload.sid));
+    if (!s || s.revoked) return undefined;
+    if (s.principal.kind === 'staff' && Date.now() - s.lastActivity > config.staffIdleSec * 1000) {
+      s.revoked = true;
+      return undefined;
+    }
+    return { ...s.principal, sid: s.sid };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Отметка активности: бездействие персонала 30 мин завершает сеанс (FR-05). */
+export function touch(p: Principal, userInitiated: boolean) {
+  const s = sessions.get(p.sid);
+  if (s && userInitiated) s.lastActivity = Date.now();
+}
+
+// ---------- блокировки входа (FR-02) ----------
+const failures = new Map<string, number[]>();
+const locks = new Map<string, number>();
+
+export function checkLock(key: string) {
+  const until = locks.get(key);
+  if (until && until > Date.now())
+    throw new ApiError(403, 'AUTH_LOCKED', 'Вход заблокирован на 5 минут', { lockedUntil: new Date(until).toISOString() });
+}
+
+export function registerFailure(key: string): boolean {
+  const now = Date.now();
+  const list = (failures.get(key) ?? []).filter((t) => now - t < 10 * 60_000);
+  list.push(now);
+  failures.set(key, list);
+  if (list.length >= 5) {
+    locks.set(key, now + 5 * 60_000);
+    failures.delete(key);
+    return true;
+  }
+  return false;
+}
+
+export function clearFailures(key: string) {
+  failures.delete(key);
+}
+
+// ---------- ограничение частоты (NFR-24) ----------
+const buckets = new Map<string, number[]>();
+export function rateLimit(p: Principal) {
+  const limit = p.kind === 'staff' ? 200 : 50;
+  const now = Date.now();
+  const list = (buckets.get(p.sub) ?? []).filter((t) => now - t < 10_000);
+  list.push(now);
+  buckets.set(p.sub, list);
+  if (list.length > limit) throw new ApiError(429, 'RATE_LIMITED', undefined, { retryAfter: 2 });
+}
+
+// ---------- проверки доступа ----------
+export async function authenticate(req: FastifyRequest): Promise<Principal> {
+  const h = req.headers.authorization;
+  if (!h?.startsWith('Bearer ')) throw new ApiError(401, 'TOKEN_INVALID');
+  const p = await verifyAccess(h.slice(7));
+  if (!p) throw new ApiError(401, 'TOKEN_INVALID');
+  rateLimit(p);
+  touch(p, req.headers['x-user-activity'] !== 'background');
+  req.principal = p;
+  return p;
+}
+
+export function requireStaff(...roles: StaffRole[]) {
+  return async (req: FastifyRequest) => {
+    const p = await authenticate(req);
+    if (p.kind !== 'staff') throw new ApiError(403, 'FORBIDDEN');
+    if (roles.length && !roles.some((r) => p.roles.includes(r))) throw new ApiError(403, 'FORBIDDEN');
+  };
+}
+
+export function requireKind(kind: PrincipalKind) {
+  return async (req: FastifyRequest) => {
+    const p = await authenticate(req);
+    if (p.kind !== kind) throw new ApiError(403, 'FORBIDDEN');
+  };
+}
