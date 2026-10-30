@@ -128,3 +128,127 @@ interface Staff {
   fullName: string;
   roles: string[];
 }
+
+function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const toast = useToast();
+  const exams = useLoad(() => staffApi.get<ExamDir[]>('/exams'));
+  const ppes = useLoad(() => staffApi.get<Ppe[]>('/ppes'));
+  const staff = useLoad(() => staffApi.get<Staff[]>('/staff'));
+  const [f, setF] = useState({ examCode: 'math-profile', date: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10), startLocal: '10:00', proctoring: true, variantIds: [] as string[], ppeId: '', number: '301', seats: 15, organizerId: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [err, setErr] = useState<unknown>();
+  const exam = exams.data?.find((e) => e.code === f.examCode);
+  const submit = async () => {
+    setErrors({});
+    setErr(undefined);
+    try {
+      await staffApi.post('/exam-sessions', {
+        examCode: f.examCode,
+        date: f.date,
+        startLocal: f.startLocal,
+        proctoring: f.proctoring,
+        variantIds: f.variantIds,
+        rooms: f.ppeId ? [{ ppeId: f.ppeId, number: f.number, seats: f.seats, organizerIds: f.organizerId ? [f.organizerId] : [] }] : [],
+      });
+      toast('Сессия создана в статусе «Подготовка»', 'ok');
+      onCreated();
+      onClose();
+    } catch (e) {
+      if (e instanceof ApiError) setErrors(e.fieldErrors());
+      setErr(e);
+    }
+      };
+  return (
+    <Modal
+      title="Новая экзаменационная сессия"
+      onClose={onClose}
+      wide
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Отмена
+          </button>
+          <button type="button" className="btn btn-primary" onClick={submit}>
+            Создать сессию
+          </button>
+        </>
+      }
+          >
+      <div className="form-grid">
+        <label className="field full">
+          <span className="label">Экзамен</span>
+          <select className="select" value={f.examCode} onChange={(e) => setF({ ...f, examCode: e.target.value, variantIds: [] })}>
+            {exams.data?.map((e) => (
+              <option key={e.code} value={e.code}>
+                {e.title} · {fmtMinutes(e.durationMin)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span className="label">Дата</span>
+          <input className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+        </label>
+        <label className="field">
+          <span className="label">Начало (местное)</span>
+          <input className="input" type="time" value={f.startLocal} onChange={(e) => setF({ ...f, startLocal: e.target.value })} />
+        </label>
+                <fieldset className="field full" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <legend className="label" style={{ padding: 0, marginBottom: 4 }}>
+            Варианты КИМ
+          </legend>
+          {exam?.variants.length ? (
+            <div className="row wrap" style={{ '--gap': '0 24px' } as React.CSSProperties}>
+              {exam.variants.map((v) => (
+                <label key={v.id} className="check">
+                  <input type="checkbox" checked={f.variantIds.includes(v.id)} onChange={(e) => setF({ ...f, variantIds: e.target.checked ? [...f.variantIds, v.id] : f.variantIds.filter((x) => x !== v.id) })} />
+                  {v.title}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <span className="hint">Для экзамена нет импортированных вариантов.</span>
+          )}
+          {errors.variantIds && <span className="error-text">{errors.variantIds}</span>}
+        </fieldset>
+                <label className="field">
+          <span className="label">ППЭ</span>
+          <select className="select" value={f.ppeId} onChange={(e) => setF({ ...f, ppeId: e.target.value })} aria-invalid={!!errors.rooms}>
+            <option value="">Выберите ППЭ</option>
+            {ppes.data?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.code} · {p.region}
+              </option>
+            ))}
+          </select>
+          {errors.rooms && <span className="error-text">{errors.rooms}</span>}
+        </label>
+        <label className="field">
+          <span className="label">Организатор</span>
+          <select className="select" value={f.organizerId} onChange={(e) => setF({ ...f, organizerId: e.target.value })}>
+            <option value="">Без организатора</option>
+            {staff.data
+              ?.filter((u) => u.roles.includes('organizer'))
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.fullName}
+                </option>
+              ))}
+          </select>
+                  </label>
+        <label className="field">
+          <span className="label">Аудитория</span>
+          <input className="input" value={f.number} onChange={(e) => setF({ ...f, number: e.target.value })} />
+        </label>
+        <label className="field">
+          <span className="label">Мест (≤ 25)</span>
+          <input className="input" type="number" min={1} max={25} value={f.seats} onChange={(e) => setF({ ...f, seats: Number(e.target.value) })} />
+        </label>
+        <label className="check full">
+          <input type="checkbox" checked={f.proctoring} onChange={(e) => setF({ ...f, proctoring: e.target.checked })} /> Контроль целостности (прокторинг)
+        </label>
+      </div>
+      {err ? <ErrorBox error={err} /> : null}
+    </Modal>
+  );
+}
