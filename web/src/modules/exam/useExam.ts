@@ -128,3 +128,116 @@ export function useExam(secret: string | null) {
     setMessages(s.messages);
     return s;
   }, []);
+
+    // ---------- локальная копия (NFR-10: не реже 1 раза в 2 с) ----------
+  const persistLocal = useCallback(() => {
+    const s = stateRef.current;
+    if (!s) return;
+    const snapAnswers: Record<string, { kind: 'short'; value: string; seq: number }> = {};
+    for (const [k, v] of dirty.current) snapAnswers[k] = { kind: v.kind, value: v.value, seq: v.seq };
+    void saveSnapshot({ attemptId: s.attemptId, answers: snapAnswers, notes: notesRef.current, queue: queueRef.current, seq: seqRef.current, savedAt: Date.now() });
+  }, []);
+
+    // ---------- отправка очереди (FR-10, FR-11) ----------
+  const flush = useCallback(async (): Promise<boolean> => {
+    const s = stateRef.current;
+    if (!s) return dirty.current.size === 0;
+    if (flushing.current) {
+      // изменение пришло во время отправки — повторить сразу после неё
+      flushAgain.current = true;
+      return false;
+    }
+    flushing.current = true;
+    flushAgain.current = false;
+    flushStarted.current = Date.now();
+
+        try {
+      const items = [...dirty.current.entries()].sort((a, b) => a[1].seq - b[1].seq);
+      for (const [taskId, a] of items) {
+        const v = versions.current.get(taskId);
+        try {
+          const res = await examApi.put<{ version: number; savedAt: string; status: string }>(
+            `/attempts/${s.attemptId}/answers/${taskId}`,
+            { kind: a.kind, value: a.value, seq: a.seq, changedAtServerClock: a.changedAt },
+            { idempotencyKey: a.key, retries: 0, headers: v ? { 'if-match': `"v${v}"` } : undefined },
+          );
+          versions.current.set(taskId, res.version);
+          if (dirty.current.get(taskId)?.seq === a.seq) dirty.current.delete(taskId);
+          setSavedAt(res.savedAt);
+          lastOk.current = Date.now();
+          setOnline(true);
+
+                  } catch (e) {
+          if (e instanceof ApiError && e.status === 412) {
+            // Автор ответа один: берём текущую версию и применяем локальное изменение поверх неё (7.5 ТЗ КЧ)
+            versions.current.set(taskId, (e.problem as { currentVersion?: number }).currentVersion ?? 0);
+            a.key = uuid();
+            continue;
+          }
+          if (e instanceof ApiError && e.status === 409) {
+            dirty.current.clear();
+            await fetchState(s.attemptId).catch(() => undefined);
+            return false;
+          }
+          if (e instanceof ApiError && e.status === 401) return false;
+          if (e instanceof ApiError && e.status < 500 && e.status !== 429) {
+            dirty.current.delete(taskId);
+            continue;
+          }
+          setOnline(false);
+          return false;
+        }
+      }
+
+            // заметки и служебные операции
+      const q = [...queueRef.current];
+      for (const item of q) {
+        try {
+          if (item.type === 'note') await examApi.put(`/attempts/${s.attemptId}/notes/${item.taskId}`, { text: item.value }, { idempotencyKey: item.idempotencyKey, retries: 0 });
+          else if (item.type === 'ui') await examApi.patch(`/attempts/${s.attemptId}/ui`, item.payload, { idempotencyKey: item.idempotencyKey, retries: 0 });
+          else if (item.type === 'events') await examApi.post(`/attempts/${s.attemptId}/events`, item.payload, { idempotencyKey: item.idempotencyKey, retries: 0 });
+          queueRef.current = queueRef.current.filter((x) => x.id !== item.id);
+          lastOk.current = Date.now();
+          setOnline(true);
+        } catch (e) {
+          if (e instanceof NetworkError || (e instanceof ApiError && e.status >= 500) || (e instanceof ApiError && e.status === 429)) {
+            setOnline(false);
+            return false;
+          }
+          queueRef.current = queueRef.current.filter((x) => x.id !== item.id);
+        }
+      }
+      return dirty.current.size === 0;
+    } finally {
+      flushing.current = false;
+      syncPending();
+      persistLocal();
+      if (flushAgain.current) setTimeout(() => void flushRef.current?.(), 0);
+    }
+  }, [fetchState, persistLocal]);
+  flushRef.current = flush;
+
+    // ---------- КИМ: ключ, расшифровка, готовность (FR-04) ----------
+  const ensurePackage = useCallback(
+    async (roomId: string) => {
+      if (pkgRef.current) return pkgRef.current;
+      pkgRef.current = await examApi.get<KimPackage>(`/rooms/${roomId}/kim-package`, { headers: wsHeaders, retries: 5, timeoutMs: 60_000 });
+      return pkgRef.current;
+    },
+    [wsHeaders],
+  );
+
+  const openVariant = useCallback(
+    async (s: AttemptStateDto) => {
+      setLoadingStep('Получение ключа варианта…');
+      const pkg = await ensurePackage(s.room.id);
+      const key = await examApi.get<{ variantId: string; key: string }>(`/attempts/${s.attemptId}/kim-key`, { retries: 3 });
+      setLoadingStep('Расшифровка заданий…');
+      const v = await decryptVariant(pkg, key.variantId, key.key);
+      setVariant(v);
+      return v;
+    },
+    [ensurePackage],
+  );
+
+  
