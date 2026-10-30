@@ -1,0 +1,26 @@
+/*
+ * Экраны М1 «Mint Glass» (спецификация B.11, C.4).
+ * Задание, сводка, итог и сбой — внутри .calm: без анимаций и переходов (ТЗ КЧ 6.6).
+ * Группа «навигация 272 + 24 + карточка 720» = 1016 px по центру; плавающая верхняя панель той же ширины.
+ * .notice, .input-answer и фокус поля ответа — в global.css (ErrorBox использует .notice и на страницах персонала).
+ */
+.exam { min-height: 100dvh; display: flex; flex-direction: column; --exam-w: calc(var(--exam-nav) + var(--exam-gap) + var(--exam-card)); } /* 1016 */
+
+/* top bar — floating glass */
+.exam-top { position: sticky; top: 12px; z-index: 10; width: min(var(--exam-w), calc(100% - 32px)); height: 64px; margin: 12px auto 16px;
+  padding: 8px 8px 8px 12px; border-radius: var(--r-bar); display: flex; align-items: center; justify-content: space-between; gap: 8px; } /* + .glass-float */
+.exam-top .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.exam-top .who > :last-child { min-width: 0; }
+.exam-top .who b { display: block; font: 600 15px/24px var(--font); }
+.exam-top .who span { display: block; font-size: 13px; line-height: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exam-top .actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.exam-top .btn { --h: var(--h-lg); }
+.save-state { min-width: 200px; justify-content: center; }      /* .badge 28 */
+.timer { margin-left: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; min-width: 136px; padding: 0 16px;
+  border-radius: var(--r-pill); border: 1px solid var(--gc-rim); background: var(--ctl-fill); box-shadow: var(--gc-glow), var(--ctl-ring);
+  font: 600 20px/28px var(--font); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; color: var(--ink); }
+.timer svg { width: 20px; height: 20px; color: var(--muted); flex: none; }
+.timer.warn { background: var(--warn-soft); border-color: rgba(125, 91, 23, 0.35); color: var(--warn); }   /* < 30 min */
+.timer.warn svg { color: var(--warn); }
+.timer.low { background: var(--bad); border-color: var(--bad); box-shadow: none; color: #fff; }          /* < 5 min, 6.55:1, no blinking */
+.timer.low svg { color: #fff; }
