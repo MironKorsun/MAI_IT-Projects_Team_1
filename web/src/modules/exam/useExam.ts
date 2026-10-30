@@ -240,4 +240,44 @@ export function useExam(secret: string | null) {
     [ensurePackage],
   );
 
+    const startAttempt = useCallback(
+    async (s: AttemptStateDto) => {
+      setPhase('loading');
+      const timer = setTimeout(() => setLoadingStep('Подготовка занимает больше обычного. Организатор уведомлён.'), 60_000);
+      try {
+        const v = await openVariant(s);
+        if (s.state === 'loading') {
+          setLoadingStep('Подтверждение готовности…');
+          await examApi.post(`/attempts/${s.attemptId}/ready`, {}, { idempotencyKey: uuid(), retries: 3 });
+        }
+        const fresh = await fetchState(s.attemptId);
+        // восстановление после перезагрузки (FR-12) + локальная очередь
+        const snap = await loadSnapshot(s.attemptId);
+        const restored: Record<string, string> = {};
+        for (const [k, a] of Object.entries(fresh.answers)) restored[k] = a.value;
+        if (snap) {
+          seqRef.current = Math.max(seqRef.current, snap.seq);
+          for (const [k, a] of Object.entries(snap.answers)) {
+            restored[k] = a.value;
+            dirty.current.set(k, { kind: a.kind, value: a.value, seq: a.seq, changedAt: serverIso(), key: uuid() });
+          }
+          queueRef.current = snap.queue;
+        }
+        setAnswers(restored);
+        setNotes({ ...fresh.notes, ...(snap?.notes ?? {}) });
+        setFlags(fresh.flags);
+        setCurrentId(fresh.lastTaskId && v.tasks.some((t) => t.id === fresh.lastTaskId) ? fresh.lastTaskId : v.tasks[0]?.id);
+        setNotice(undefined);
+        setPhase('exam');
+        if (dirty.current.size || queueRef.current.length) void flush();
+      } catch (e) {
+        setFatal(e instanceof ApiError ? e.problem.detail ?? e.problem.title : 'Не удалось подготовить вариант. Сообщите организатору.');
+        setPhase('fatal');
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    [fetchState, flush, openVariant, serverIso],
+  );
+
   
