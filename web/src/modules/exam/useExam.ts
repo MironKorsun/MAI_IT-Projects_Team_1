@@ -280,4 +280,291 @@ export function useExam(secret: string | null) {
     [fetchState, flush, openVariant, serverIso],
   );
 
-  
+    const route = useCallback(
+    (s: AttemptStateDto) => {
+      if (FINAL_STATES.includes(s.state)) {
+        setPhase('final');
+        setTimeout(() => void wipe(), 1000);
+        return;
+      }
+      if (s.state === 'waiting' || s.state === 'assigned') setPhase('brief');
+      else if (s.state === 'loading' || s.state === 'inProgress') void startAttempt(s);
+    },
+    [startAttempt],
+  );
+
+    // ---------- запуск: восстановление сеанса или проверка рабочего места ----------
+  useEffect(() => {
+    if (!secret) {
+      setPhase('fatal');
+      setFatal('Этот компьютер не подготовлен как рабочее место ППЭ. Экзамен проходит только на рабочем месте, которое подготовил технический специалист.');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const info = await examApi.get<WorkstationInfo>('/workstations/self', { headers: wsHeaders, retries: 2 });
+        if (cancelled) return;
+        setWs(info);
+        if (await examApi.refresh()) {
+          const { attemptId } = jwtClaims(examApi.getToken());
+          if (attemptId) {
+            const s = await fetchState(attemptId);
+            if (!cancelled) return route(s);
+          }
+        }
+        setPhase('check');
+      } catch {
+        if (!cancelled) {
+          setFatal('Рабочее место не найдено. Проверьте адрес или обратитесь к техническому специалисту.');
+          setPhase('fatal');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [secret, wsHeaders, fetchState, route]);
+
+    // ---------- проверка рабочего места (FR-01) ----------
+  const runChecks = useCallback(async () => {
+    if (!ws) return;
+    const browser = detectBrowser();
+    const base: CheckItem[] = [
+      { id: 'browser', label: 'Версия браузера', status: 'pending', required: true, help: 'Используйте Яндекс Браузер или Chromium 120+.' },
+      { id: 'screen', label: 'Разрешение экрана', status: 'pending', required: true, help: 'Нужно не менее 1280 × 720.' },
+      { id: 'fullscreen', label: 'Полноэкранный режим', status: 'pending', required: ws.session.proctoring, help: 'Разрешите полноэкранный режим в настройках браузера.' },
+      { id: 'latencyMs', label: 'Отклик сервера', status: 'pending', required: true, help: 'Проверьте подключение рабочего места к сети ППЭ.' },
+      { id: 'kimPreloaded', label: 'Пакет заданий загружен', status: 'pending', required: true, help: 'Повторите проверку — загрузка продолжится с места обрыва.' },
+    ];
+    setChecks(base);
+    const set = (id: CheckItem['id'], status: CheckItem['status'], detail?: string) =>
+      setChecks((cs) => cs.map((c) => (c.id === id ? { ...c, status, detail } : c)));
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const result: WorkstationCheck = { browser: false, screen: false, fullscreen: false, latencyMs: -1, kimPreloaded: false, passed: false };
+
+      // ---------- проверка рабочего места (FR-01) ----------
+  const runChecks = useCallback(async () => {
+    if (!ws) return;
+    const browser = detectBrowser();
+    const base: CheckItem[] = [
+      { id: 'browser', label: 'Версия браузера', status: 'pending', required: true, help: 'Используйте Яндекс Браузер или Chromium 120+.' },
+      { id: 'screen', label: 'Разрешение экрана', status: 'pending', required: true, help: 'Нужно не менее 1280 × 720.' },
+      { id: 'fullscreen', label: 'Полноэкранный режим', status: 'pending', required: ws.session.proctoring, help: 'Разрешите полноэкранный режим в настройках браузера.' },
+      { id: 'latencyMs', label: 'Отклик сервера', status: 'pending', required: true, help: 'Проверьте подключение рабочего места к сети ППЭ.' },
+      { id: 'kimPreloaded', label: 'Пакет заданий загружен', status: 'pending', required: true, help: 'Повторите проверку — загрузка продолжится с места обрыва.' },
+    ];
+    setChecks(base);
+    const set = (id: CheckItem['id'], status: CheckItem['status'], detail?: string) =>
+      setChecks((cs) => cs.map((c) => (c.id === id ? { ...c, status, detail } : c)));
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const result: WorkstationCheck = { browser: false, screen: false, fullscreen: false, latencyMs: -1, kimPreloaded: false, passed: false };
+
+        await wait(350);
+    result.browser = browser.ok;
+    set('browser', browser.ok ? 'ok' : 'fail', browser.name);
+    await wait(250);
+    const w = window.screen.width * (window.devicePixelRatio > 1 ? 1 : 1);
+    result.screen = window.screen.width >= 1280 && window.screen.height >= 720;
+    set('screen', result.screen ? 'ok' : 'fail', `${w} × ${window.screen.height}`);
+    await wait(250);
+    result.fullscreen = !!document.documentElement.requestFullscreen && document.fullscreenEnabled;
+    set('fullscreen', result.fullscreen ? 'ok' : 'fail', result.fullscreen ? 'доступен' : 'недоступен');
+    try {
+      const samples: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const t0 = performance.now();
+        await examApi.get('/time', { retries: 0 });
+        samples.push(performance.now() - t0);
+      }
+      result.latencyMs = Math.round(samples.sort((a, b) => a - b)[1]);
+      set('latencyMs', result.latencyMs < 1000 ? 'ok' : 'fail', `${result.latencyMs} мс`);
+    } catch {
+      set('latencyMs', 'fail', 'нет ответа');
+    }
+    try {
+      const pkg = await ensurePackage(ws.room.id);
+      result.kimPreloaded = true;
+      const kb = Math.round(JSON.stringify(pkg).length / 1024);
+      set('kimPreloaded', 'ok', `${pkg.variants.length} вар., ${kb} КБ, зашифрован`);
+    } catch {
+      set('kimPreloaded', 'fail', 'ошибка загрузки');
+    }
+    const requiredOk = base.every((c) => !c.required || (c.id === 'latencyMs' ? result.latencyMs >= 0 && result.latencyMs < 1000 : !!result[c.id]));
+    result.passed = requiredOk;
+    try {
+      await examApi.post(`/workstations/${ws.workstationId}/check`, result, { headers: wsHeaders });
+    } catch {
+      /* статус будет передан при следующей проверке */
+    }
+    return requiredOk;
+  }, [ws, ensurePackage, wsHeaders]);
+
+    // ---------- вход (FR-02) ----------
+  const login = useCallback(
+    async (participantCode: string, accessCode: string) => {
+      setLoginError(undefined);
+      try {
+        const r = await examApi.login('/auth/participant/login', { participantCode, accessCode, workstationSecret: secret });
+        const s = await fetchState(r.attemptId!);
+        route(s);
+      } catch (e) {
+        if (e instanceof ApiError && e.code === 'AUTH_LOCKED') {
+          const until = (e.problem as { lockedUntil?: string }).lockedUntil;
+          setLoginError(`Слишком много неудачных попыток. Ввод заблокирован до ${until ? new Date(until).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '…'}. Организатор уведомлён.`);
+        } else if (e instanceof ApiError) setLoginError('Идентификатор участника или код аудитории не подходят. Проверьте данные и попробуйте ещё раз.');
+        else setLoginError('Нет связи с сервером. Повторите попытку.');
+      }
+    },
+    [secret, fetchState, route],
+  );
+
+    // ---------- канал событий ----------
+  const attemptId = state?.attemptId;
+  useEffect(() => {
+    if (!attemptId) return;
+    const ch = new EventChannel(examApi, {
+      onEvent: (e: WsEvent) => {
+        const s = stateRef.current;
+        if (!s) return;
+        if (e.type === 'room.started') {
+          setState((x) => (x ? { ...x, roomStarted: true } : x));
+          void fetchState(s.attemptId).then((ns) => ns.state === 'loading' && phaseRef.current === 'brief' && setNotice({ id: e.eventId, text: 'Экзамен начат организатором. Нажмите «Начать», когда будете готовы.', tone: 'info' }));
+        }
+        if (e.type === 'attempt.timeChanged') {
+          void fetchState(s.attemptId);
+          setNotice({ id: e.eventId, text: 'Время окончания экзамена изменено организатором.', tone: 'info' });
+        }
+        if (e.type === 'attempt.terminated') {
+          void fetchState(s.attemptId).then(route);
+        }
+        if (e.type === 'room.message') {
+          const m = e.data as { id: string; text: string; at: string };
+          setMessages((ms) => (ms.some((x) => x.id === m.id) ? ms : [...ms, m]));
+          setNotice({ id: e.eventId, text: m.text, tone: 'info' });
+        }
+      },
+      onStatus: (c) => {
+        if (c) lastOk.current = Date.now();
+      },
+      onReconnect: () => {
+        const s = stateRef.current;
+        if (s) void fetchState(s.attemptId).then((ns) => FINAL_STATES.includes(ns.state) && route(ns));
+      },
+    });
+    return ch.start();
+  }, [attemptId, fetchState, route]);
+
+    const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+
+  // ---------- такт: таймер, автосохранение, обнаружение обрыва ----------
+  useEffect(() => {
+    if (phase !== 'exam' && phase !== 'brief') return;
+    const t = setInterval(() => {
+      setNow(Date.now());
+      if (phase === 'exam' && flushing.current && Date.now() - flushStarted.current > OFFLINE_AFTER_MS) setOnline(false);
+    }, 250);
+    return () => clearInterval(t);
+  }, [phase]);
+
+    useEffect(() => {
+    if (phase !== 'exam') return;
+    const save = setInterval(() => {
+      if (dirty.current.size || queueRef.current.length) void flush();
+    }, AUTOSAVE_MS);
+    const retry = setInterval(() => {
+      if (!online) {
+        void examApi
+          .get('/time', { retries: 0 })
+          .then(() => {
+            lastOk.current = Date.now();
+            setOnline(true);
+            void flush();
+          })
+          .catch(() => undefined);
+      }
+    }, 5_000);
+    return () => {
+      clearInterval(save);
+      clearInterval(retry);
+    };
+  }, [phase, flush, online]);
+
+    // При закрытии вкладки — последняя локальная копия
+  useEffect(() => {
+    const h = () => persistLocal();
+    window.addEventListener('pagehide', h);
+    return () => window.removeEventListener('pagehide', h);
+  }, [persistLocal]);
+
+  // ---------- истечение времени (FR-17) ----------
+  const remainingMs = state?.endsAt ? new Date(state.endsAt).getTime() - (now + offsetRef.current) : undefined;
+  useEffect(() => {
+    if (phase !== 'exam' || remainingMs === undefined || remainingMs > 0 || expiredHandled.current) return;
+    expiredHandled.current = true;
+    (async () => {
+      const deadline = Date.now() + 10_000;
+      while (Date.now() < deadline && (dirty.current.size || queueRef.current.length)) {
+        if (await flush()) break;
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      const s = stateRef.current!;
+      for (let i = 0; i < 5; i++) {
+        try {
+          const ns = await fetchState(s.attemptId);
+          if (FINAL_STATES.includes(ns.state)) return route(ns);
+        } catch {
+          /* сервер переведёт попытку сам */
+        }
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+      setState((x) => (x ? { ...x, state: 'timeExpired' } : x));
+      setPhase('final');
+    })();
+  }, [phase, remainingMs, flush, fetchState, route]);
+
+    // ---------- контроль целостности (FR-18, FR-19) ----------
+  useEffect(() => {
+    if (phase !== 'exam' || !ws?.session.proctoring) return;
+    const push = (type: string, text?: string) => {
+      eventsBuf.current.push({ type, at: serverIso() });
+      if (text) setNotice({ id: uuid(), text, tone: 'warn' });
+    };
+    const onFs = () => {
+      if (!document.fullscreenElement) push('fullscreenExit', 'Работа продолжается. Рекомендуем вернуться в полноэкранный режим.');
+    };
+    const onVis = () => document.visibilityState === 'hidden' && push('visibilityHidden');
+    const onBlur = () => push('windowBlur');
+    const inKim = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest?.('[data-kim]');
+    const onCopy = (e: ClipboardEvent) => {
+      if (inKim(e.target) || !(e.target as HTMLElement)?.closest?.('textarea, input')) {
+        e.preventDefault();
+        push('copy', 'Копирование текста заданий недоступно. Для заметок используйте черновик.');
+      }
+    };
+
+        const onPaste = (e: ClipboardEvent) => {
+      const text = e.clipboardData?.getData('text') ?? '';
+      const own = Object.values(answersRef.current).some((a) => a.includes(text)) || Object.values(notesRef.current).some((n) => n.includes(text));
+      if (!own && text.length > 0) {
+        e.preventDefault();
+        push('paste', 'Вставка из внешнего источника недоступна.');
+      }
+    };
+    const onPrint = () => push('print');
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        push('print', 'Печать во время экзамена недоступна.');
+      }
+    };
+    const onCtx = (e: MouseEvent) => {
+      if (inKim(e.target)) {
+        e.preventDefault();
+        push('contextMenu');
+      }
+    };
+    document.addEventListener('fullscreenchange', onFs);
+
+    
