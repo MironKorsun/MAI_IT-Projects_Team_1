@@ -400,3 +400,79 @@ export default async function adminRoutes(app: FastifyInstance) {
       return { recalculated: affected.length };
     },
   );
+
+    app.get('/scales', { preHandler: requireStaff('admin', 'analyst') }, async () => db.scales);
+
+  /** Загрузка шкалы перевода новой версией (FR-34; ТЗ АО FR-01, FR-02, FR-04). */
+  app.put<{ Params: { code: string; year: string }; Body: { values: number[]; threshold: number } }>(
+    '/subjects/:code/scales/:year',
+    {
+      preHandler: requireStaff('admin', 'analyst'),
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['values', 'threshold'],
+          properties: { values: { type: 'array', items: { type: 'number' } }, threshold: { type: 'number' } },
+        },
+      },
+    },
+    async (req) => {
+      const exam = EXAMS[req.params.code];
+      if (!exam) throw notFound();
+      const year = Number(req.params.year);
+      const variant = db.variants.find((v) => v.examCode === req.params.code);
+      const maxPrimary = variant ? variant.keys.reduce((s, t) => s + t.maxScore, 0) : req.body.values.length - 1;
+      const errors = validateScale(exam.scale, req.body.values, req.body.threshold, maxPrimary);
+      if (errors.length) throw invalid(errors, 'IMPORT_INVALID', 422);
+      const prev = scaleFor(req.params.code, year);
+      const version = `${year}.${(db.scales.filter((s) => s.examCode === req.params.code && s.year === year).length + 1)}`;
+      db.scales.push({ examCode: req.params.code, year, version, kind: exam.scale, values: req.body.values, threshold: req.body.threshold, loadedAt: nowIso() });
+      audit({ type: 'scale.loaded', category: 'Администрирование', actorRole: req.principal!.roles.join(','), actorId: req.principal!.sub, object: `${exam.title} ${year}`, details: `версия ${version}` });
+      if (prev) {
+        const affected = db.results.filter((r) => byId(db.sessions, r.sessionId)?.examCode === req.params.code && byId(db.sessions, r.sessionId)?.date.startsWith(String(year))).map((r) => r.attemptId);
+        recalcAttempts(affected, `Новая версия шкалы ${version}`);
+      } else for (const s of db.sessions) refreshSessionStatus(s.id);
+      persist();
+      return { version };
+    },
+  );
+
+  // ---------- апелляции (FR-50) ----------
+  app.get('/appeals', admin, async () =>
+    db.appeals.map((a) => ({ ...a, participantCode: byId(db.participants, a.participantId)?.code })),
+  );
+
+  app.patch<{ Params: { id: string }; Body: { status: 'reviewing' | 'accepted' | 'rejected'; comment?: string; taskScores?: Record<string, number> } }>(
+    '/appeals/:id',
+    {
+      ...admin,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['status'],
+          properties: {
+            status: { type: 'string', enum: ['reviewing', 'accepted', 'rejected'] },
+            comment: { type: 'string', maxLength: 1000 },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const a = byId(db.appeals, req.params.id);
+      if (!a) throw notFound();
+      const order = { registered: 0, reviewing: 1, accepted: 2, rejected: 2 } as const;
+      if (order[req.body.status] <= order[a.status]) throw new ApiError(409, 'INVALID_STATE', 'Недопустимый переход статуса');
+      a.status = req.body.status;
+      a.history.push({ status: a.status, at: nowIso(), comment: req.body.comment });
+      audit({ type: 'appeal.status', category: 'Администрирование', actorRole: 'admin', actorId: req.principal!.sub, object: a.number, details: a.status });
+      if (a.status === 'accepted') {
+        const att = db.attempts.find((x) => x.participantId === a.participantId && x.sessionId === a.sessionId);
+        if (att) recalcAttempts([att.id], `Апелляция ${a.number} удовлетворена`);
+      }
+      persist();
+      return a;
+    },
+  );
+}
