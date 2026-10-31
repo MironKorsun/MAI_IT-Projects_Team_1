@@ -24,3 +24,142 @@
 .timer.warn svg { color: var(--warn); }
 .timer.low { background: var(--bad); border-color: var(--bad); box-shadow: none; color: #fff; }          /* < 5 min, 6.55:1, no blinking */
 .timer.low svg { color: #fff; }
+
+/* body: centred 272 + 24 + 720 */
+.exam-body { display: grid; grid-template-columns: var(--exam-nav) minmax(0, var(--exam-card)); gap: var(--exam-gap); justify-content: center; align-items: start; padding: 0 16px 32px; flex: 1; }
+.exam-nav { position: sticky; top: 92px; padding: 20px; max-height: calc(100dvh - 108px); overflow: auto; }  /* + .glass */
+.exam-nav-head { display: flex; align-items: baseline; justify-content: space-between; }
+.exam-nav-head b { font: 600 15px/24px var(--font-display); }
+.exam-nav-head span { font-size: 14px; line-height: 20px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.exam-nav .progress { margin: 12px 0 16px; }
+.task-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 52px); gap: 8px; }  /* 4×52+3×8 = 232 = 272−40 */
+.task-cell { position: relative; width: 52px; height: 52px; padding: 0; display: grid; place-items: center; border-radius: var(--r-ctl);
+  border: 1px solid var(--field-stroke); background: rgba(255, 255, 255, 0.6); box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.8);
+  font: 600 16px/1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink); cursor: pointer; }
+.task-cell:hover { background: #fff; }
+.task-cell.has { background: var(--mint-100); border-color: var(--mint-600); color: var(--mint-800); }
+.task-cell .tick { position: absolute; right: 4px; bottom: 4px; width: 12px; height: 12px; color: var(--mint-700); }  /* <Icon name="check" size={12}/> aria-hidden */
+.task-cell.current { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink); font-weight: 700; }
+.task-cell:focus-visible { outline-offset: 6px; }
+.task-flag { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--accent-ink); box-shadow: 0 0 0 1px var(--accent); }
+.task-flag svg { width: 10px; height: 10px; }
+.task-cell.mini { width: 16px; height: 16px; border-radius: 5px; box-shadow: none; }
+.legend { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 20px; color: var(--muted); }
+.legend > * { display: flex; align-items: center; gap: 8px; }
+.legend svg { width: 16px; height: 16px; flex: none; color: var(--accent-ink); }
+.exam-finish { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }     /* .btn.btn-lg.btn-block (secondary) */
+:root[data-theme='contrast'] .task-cell { background: #fff; }
+:root[data-theme='contrast'] .task-cell.has { background: #e3f7e3; border-color: #00552c; color: #000; }
+:root[data-theme='contrast'] .task-cell.current { box-shadow: 0 0 0 2px #fff, 0 0 0 5px #000; }
+
+/* task card — thick glass; при переходе к заданию карточка встаёт под липкую панель (92 = 12 + 64 + 16) */
+.task-card { scroll-margin-top: 92px; }
+/* task card — thick glass */
+.exam-main { min-width: 0; }
+.exam-notices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.exam-notices:empty { display: none; }
+.task-card { padding: 40px; }                     /* + .glass.glass-thick */
+.task-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.task-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.task-title .h-exam:focus { outline: none; }
+.kim-text { font: 450 18px/30px var(--font); color: var(--ink); max-width: var(--measure); }
+.kim-text p + p { margin-top: 12px; }
+.kim-text .nobr { white-space: nowrap; }   /* формула + «,» / «.» не разрываются */
+.kim-text .katex-display { margin: 16px 0; }
+.kim-text img, .kim-text svg { max-width: 100%; border-radius: 12px; }
+.katex { font-size: 1.05em; }
+/* KaTeX: длинная выводная формула прокручивается внутри строки, а не растягивает карточку */
+.kim-text .katex-display, .dialog .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.dialog .katex-display { margin: 8px 0; }
+.kim-text .katex svg { border-radius: 0; max-width: none; }   /* стрелки \vec и надчёркивания KaTeX: иначе SVG сжимается до нулевой ширины */
+.kim-text ul, .kim-text ol { margin: 12px 0; padding-left: 24px; }
+.kim-text li + li { margin-top: 6px; }
+.kim-text sub, .kim-text sup { line-height: 0; }
+.no-select { -webkit-user-select: none; user-select: none; }
+.answer-zone { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
+.answer-zone .label { font: 600 15px/24px var(--font); color: var(--ink); }
+.answer-row { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.saved { display: inline-flex; align-items: center; gap: 6px; font: 500 14px/20px var(--font); color: var(--ok); }
+.saved svg { width: 16px; height: 16px; flex: none; }
+.notes { margin-top: 24px; }                       /* toggle .btn.btn-ghost (44) */
+.notes > .btn-ghost { margin-left: -18px; }        /* значок «Черновик» по левому краю «Ответ» и поля */
+.notes .textarea { margin-top: 8px; }
+.task-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; margin-top: 32px; }
+.task-nav .keys { text-align: center; font-size: 12px; line-height: 16px; color: var(--muted); }
+.task-nav .btn-primary { min-width: 200px; }
+
+/* сводка перед завершением */
+.summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cell-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.summary-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+/* strip fallback: <1080px or 150/200 % scale */
+@media (max-width: 1079px) {
+  .exam-top { position: static; height: auto; flex-wrap: wrap; }
+  .exam-top .actions { flex: 1 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+  .save-state { min-width: 0; }
+  .task-card { scroll-margin-top: 16px; }
+  .exam-body { grid-template-columns: minmax(0, var(--exam-card)); }
+  .exam-nav { position: static; max-height: none; padding: 12px; }
+  .task-grid { grid-template-columns: repeat(auto-fill, 48px); }
+  .task-cell { width: 48px; height: 48px; }
+  .legend { flex-direction: row; flex-wrap: wrap; gap: 8px 16px; }
+  .exam-finish .btn { width: auto; }
+}
+/* Масштаб 150/200 %: панель с таймером остаётся липкой и в одну строку; навигация — компактная полоса,
+   чтобы задание начиналось на первом экране (минимум ППЭ 1280×720) */
+:root[data-scale] .exam-top { position: sticky; top: 8px; height: auto; min-height: 64px; flex-wrap: nowrap; margin-top: 8px; }
+:root[data-scale] .exam-top > .row { flex: 1 1 0; min-width: 0; }   /* название сжимается первым, действия и таймер — в одну строку */
+:root[data-scale] .exam-top .who { flex: 1 1 auto; min-width: 0; }
+:root[data-scale] .exam-top .who b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root[data-scale] .exam-top .actions { flex: 0 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+:root[data-scale] .save-state { min-width: 0; height: auto; min-height: 28px; padding-block: 4px; white-space: normal; line-height: 18px; }
+:root[data-scale] .task-card { scroll-margin-top: 104px; }
+:root[data-scale] .exam-body { grid-template-columns: minmax(0, 1fr); }
+:root[data-scale] .exam-nav { position: static; max-height: none; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+:root[data-scale] .exam-nav-head { gap: 8px; }
+:root[data-scale] .exam-nav .progress { display: none; }                  /* «N из 12» остаётся в заголовке полосы */
+:root[data-scale] .task-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+:root[data-scale] .task-cell:not(.mini) { width: 48px; height: 48px; }
+:root[data-scale] .legend { margin: 0; padding: 0; border: 0; flex-direction: row; flex-wrap: wrap; gap: 8px 16px; }
+:root[data-scale] .exam-finish { margin: 0 0 0 auto; padding: 0; border: 0; }
+:root[data-scale] .exam-finish .btn { width: auto; }
+/* 200 %: в панели только знак, «Справка» — значок; легенду заменяют подписи ячеек (aria-label/title) */
+:root[data-scale='200'] .exam-top .who { display: none; }
+:root[data-scale='200'] .refs-btn { width: var(--h); padding: 0; }
+:root[data-scale='200'] .refs-label { display: none; }
+:root[data-scale='200'] .legend { display: none; }
+:root[data-scale='200'] .task-card { padding: 24px; }
+:root[data-scale='200'] .task-nav { grid-template-columns: 1fr 1fr; }
+:root[data-scale='200'] .task-nav .keys { display: none; }
+:root[data-scale='200'] .summary-grid { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 760px) { .task-card { padding: 24px; } .task-nav { grid-template-columns: 1fr 1fr; } .task-nav .keys { display: none; } }
+@media (max-width: 639px) { .summary-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .task-card { padding: 20px; } }
+
+/* ---------- Шаги до задания: проверка места, вход, инструктаж; итог и сбой ---------- */
+.seat-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+/* шаг 1: строки проверок (li.tile) */
+.check-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.check-list > li { min-height: 56px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.check-side { flex: 0 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; text-align: right; }
+@media (max-width: 479px) { .check-list .detail { flex-basis: 100%; order: 3; text-align: left; } }
+.step-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+/* шаг 3: инструкция + колонка параметров 360 */
+.brief-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+@media (max-width: 899px) { .brief-grid { grid-template-columns: minmax(0, 1fr); } }
+:root[data-scale] .brief-grid { grid-template-columns: minmax(0, 1fr); }
+/* в одной колонке при масштабе карточка старта — первой: её состояние видно без прокрутки инструкции */
+:root[data-scale] .brief-aside { display: contents; }
+:root[data-scale] .brief-start { order: -1; }
+.brief-aside { display: flex; flex-direction: column; gap: 12px; }
+.identity { display: flex; align-items: center; gap: 10px; padding: 12px 16px; margin: 16px 0 24px; font-size: 14px; line-height: 20px; } /* + .tile */
+.identity svg { width: 18px; height: 18px; flex: none; color: var(--muted); }
+.brief-body { font-size: 16px; line-height: 26px; color: var(--ink-2); max-width: 68ch; }
+.brief-body .h2, .brief-body .h3 { color: var(--ink); }
+/* загрузка, итог, сбой: по центру экрана */
+.screen-center { min-height: 80dvh; display: flex; flex-direction: column; justify-content: center; }
+.final-icon { width: 56px; height: 56px; flex: none; margin: 0 auto; border-radius: var(--r-tile); display: grid; place-items: center; background: var(--info-soft); color: var(--ink-2); }
+.final-icon.ok { background: var(--mint-100); color: var(--mint-700); }
+.final-icon svg { width: 28px; height: 28px; }
+.kv-center { width: 100%; max-width: 360px; margin-inline: auto; text-align: left; }

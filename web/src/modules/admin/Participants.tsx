@@ -34,7 +34,7 @@ export default function Participants() {
   const rows = data?.items;
   const total = data?.total ?? 0;
 
-    return (
+  return (
     <>
       <PageHead eyebrow="Администрирование" title="Участники и особые условия" subtitle="Увеличение продолжительности на 1,5 ч, масштаб интерфейса и контрастная тема для участников с ОВЗ." />
       <div className="reveal" style={{ '--i': 1 } as React.CSSProperties}>
@@ -59,7 +59,7 @@ export default function Participants() {
               {total > rows.length ? ` · показаны первые ${rows.length}` : ''}
             </span>
           )}
-                  </div>
+        </div>
         {error ? <ErrorBox error={error} onRetry={reload} /> : null}
         <section className="glass table-panel" aria-label="Участники" style={error ? { marginTop: 12 } : undefined}>
           {!rows && !error && <Skeleton h={300} />}
@@ -78,7 +78,7 @@ export default function Participants() {
                     </th>
                   </tr>
                 </thead>
-                                <tbody>
+                <tbody>
                   {rows.map((p) => {
                     const s = p.specialConditions;
                     return (
@@ -112,7 +112,7 @@ export default function Participants() {
               </table>
             </div>
           )}
-                  </section>
+        </section>
       </div>
       {edit && (
         <Confirm
@@ -125,7 +125,7 @@ export default function Participants() {
             toast('Особые условия сохранены', 'ok');
             await reload();
           }}
-                  >
+        >
           <label className="check">
             <input type="checkbox" checked={sc.extraTime} onChange={(e) => setSc({ ...sc, extraTime: e.target.checked })} /> Увеличить продолжительность на 1,5 часа
           </label>

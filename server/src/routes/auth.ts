@@ -79,3 +79,4 @@ export default async function authRoutes(app: FastifyInstance) {
       return { ...tokens, attemptId: attempt.id };
     },
   );
+}
