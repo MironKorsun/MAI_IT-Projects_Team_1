@@ -257,3 +257,100 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     </ToastCtx.Provider>
   );
 }
+
+/**
+ * Статус: текст плюс точка или значок, не только цвет.
+ * Тона — спокойные варианты `.badge`: ok · warn · bad · accent (сланцевый) · без тона — нейтральный.
+ */
+export function StatusBadge({
+  tone,
+  icon,
+  live,
+  className,
+  children,
+}: {
+  tone?: 'ok' | 'warn' | 'bad' | 'accent';
+  icon?: IconName;
+  /** «Дышащая» точка — только для «Экзамен идёт» и «Ожидаем старта». */
+  live?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className={['badge', tone, className].filter(Boolean).join(' ')}>
+      {icon ? <Icon name={icon} /> : <span className={`dot${live ? ' live' : ''}`} aria-hidden="true" />}
+      {children}
+    </span>
+  );
+}
+
+const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/** Плавный счётчик для KPI персонала (не для баллов участника). При reduced-motion — сразу итоговое значение. */
+export function CountUp({ value, decimals = 0, duration = 600 }: { value: number; decimals?: number; duration?: number }) {
+  const [v, setV] = useState(() => (reducedMotion() ? value : 0));
+  const from = useRef(v);
+  useEffect(() => {
+    if (reducedMotion() || duration <= 0) {
+      from.current = value;
+      setV(value);
+      return;
+    }
+    const start = performance.now();
+    const a = from.current;
+    let raf = 0;
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - start) / duration);
+      const e = 1 - Math.pow(1 - k, 3);
+      const cur = a + (value - a) * e;
+      from.current = cur;
+      setV(cur);
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return <>{v.toLocaleString('ru-RU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</>;
+}
+
+export function Skeleton({ h = 18, w = '100%', r }: { h?: number; w?: number | string; r?: number }) {
+  return <div className="skeleton" style={{ height: h, width: w, borderRadius: r }} aria-hidden="true" />;
+}
+
+export function Empty({ icon = 'info', children }: { icon?: IconName; children: ReactNode }) {
+  return (
+    <div className="empty">
+      <Icon name={icon} />
+      <div>{children}</div>
+    </div>
+  );
+}
+
+/** Загрузка данных с повторной попыткой. */
+export function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []) {
+  const [data, setData] = useState<T>();
+  const [error, setError] = useState<unknown>();
+  const [loading, setLoading] = useState(true);
+  // номер запроса: ответ на устаревший запрос (поиск уже изменился) не перезаписывает свежие данные
+  const gen = useRef(0);
+  const reload = useCallback(async () => {
+    const my = ++gen.current;
+    setLoading(true);
+    try {
+      const d = await fn();
+      if (my !== gen.current) return;
+      setData(d);
+      setError(undefined);
+    } catch (e) {
+      if (my === gen.current) setError(e);
+    } finally {
+      if (my === gen.current) setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+  return { data, error, loading, reload, setData };
+}
+
