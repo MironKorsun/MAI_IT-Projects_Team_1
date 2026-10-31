@@ -99,3 +99,160 @@ paths:
       responses:
         '200': { description: Успешно }
         default: { $ref: '#/components/responses/Problem' }
+  /workstations/{id}/check:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Рабочее место]
+      summary: "Результат проверки рабочего места (FR-09)"
+      security: [{ workstationSecret: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/state:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Попытки]
+      summary: "Состояние попытки, serverTime, ответы с версиями (FR-10)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /rooms/{id}/kim-package:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [КИМ]
+      summary: "Зашифрованный пакет вариантов аудитории, Range (FR-30)"
+      security: [{ workstationSecret: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/kim-key:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [КИМ]
+      summary: "Ключ варианта после старта аудитории (FR-31)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/ready:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Попытки]
+      summary: "Подтверждение готовности, фиксация T0 (FR-13)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/answers/{taskId}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: taskId, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Попытки]
+      summary: "Сохранение ответа: seq, If-Match, окно приёма (FR-14–FR-17)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnswerPut' }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/notes/{taskId}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: taskId, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Попытки]
+      summary: "Черновик участника (FR-18)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/ui:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Попытки]
+      summary: "Отметки для возврата и последнее задание"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/events:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Попытки]
+      summary: "Пакет событий целостности, ≤ 50 (FR-19)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/finish:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Попытки]
+      summary: "Завершение попытки (FR-20)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
