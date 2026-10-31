@@ -140,7 +140,6 @@ export interface SeatDto {
   link?: string;
 }
 
-
 export interface RoomDto {
   id: string;
   number: string;
@@ -212,7 +211,6 @@ export const APPEAL_STATUS_LABEL: Record<AppealStatus, string> = {
   accepted: 'Удовлетворена',
   rejected: 'Отклонена',
 };
-
 
 export interface AppealDto {
   id: string;
