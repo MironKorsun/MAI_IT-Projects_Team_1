@@ -1,0 +1,40 @@
+/* М6 «Результаты»: строка заголовка, блок балла, ответы по заданиям, история апелляции */
+
+/* Подзаголовок занимает место рядом с плашкой участника, а не выталкивает её на новую строку */
+.results-app .title-row .titles { flex: 1 1 320px; min-width: 0; }
+.results-app .title-row .pills { align-items: center; }
+.results-app .card-head:last-child { margin-bottom: 0; }
+
+/* Блок балла: акцентная плашка 280 + .kv; одна колонка на телефоне */
+.score-hero { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; align-items: center; }
+@media (max-width: 639px) { .score-hero { grid-template-columns: minmax(0, 1fr); } }
+.score-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 184px; }
+.score-label { font: 600 13px/20px var(--font); color: var(--ink-2); }
+.score-value { font: 600 64px/64px var(--font-display); letter-spacing: -0.04em; font-variant-numeric: lining-nums proportional-nums; color: var(--ink); }
+.score-primary { margin-bottom: 8px; font-size: 14px; line-height: 20px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.score-tile .badge { margin-top: auto; }
+
+/* Ответы по заданиям */
+.task-results { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 719px) { .task-results { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 479px) { .task-results { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.task-result { min-height: 72px; padding: 12px; border-radius: var(--r-tile); display: flex; flex-direction: column; justify-content: space-between; gap: 4px;
+  background: rgba(255,255,255,.6); box-shadow: inset 0 0 0 1px var(--line-strong); }
+/* верные и неверные плитки нейтральны — смысл несут значки; единственный мятный акцент экрана — плитка балла */
+.task-result .n { font: 600 12px/16px var(--font); color: var(--muted); }
+.task-result .a { display: flex; align-items: center; gap: 6px; font: 600 15px/20px var(--font); font-variant-numeric: tabular-nums; }
+.task-result.ok svg { color: var(--mint-700); } .task-result.no svg { color: var(--bad); }
+.task-result .ans { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 450; }
+/* ответ занимает свободное место, балл прижат вправо */
+.task-result svg { flex: none; }
+.task-result .ans { flex: 1; min-width: 0; }
+.task-result .s { flex: none; margin-left: auto; }
+:root[data-theme='contrast'] .task-result { background: #fff; box-shadow: inset 0 0 0 2px #000; }
+
+/* История рассмотрения апелляции: линия 2px, точки — мятные (пройдено) и серые (ожидается) */
+.timeline { list-style: none; margin: 0; padding: 0 0 0 18px; border-left: 2px solid var(--line-strong); display: flex; flex-direction: column; gap: 12px; }
+.timeline li { position: relative; }
+.timeline li::before { content: ''; position: absolute; left: -25px; top: 4px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--solid); border: 2px solid var(--line-strong); }
+.timeline li.done::before { border-color: var(--mint-600); }
+.timeline li.pending { color: var(--muted); }
