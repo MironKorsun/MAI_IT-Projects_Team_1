@@ -33,7 +33,7 @@ export default function StaffUsers() {
   const needle = q.trim().toLowerCase();
   const rows = data?.filter((u) => (!role || u.roles.includes(role)) && (!needle || u.fullName.toLowerCase().includes(needle) || u.login.toLowerCase().includes(needle)));
 
-    return (
+  return (
     <>
       <PageHead
         eyebrow="Администрирование"
@@ -45,7 +45,7 @@ export default function StaffUsers() {
           </button>
         }
       />
-            <div className="reveal" style={{ '--i': 1 } as React.CSSProperties}>
+      <div className="reveal" style={{ '--i': 1 } as React.CSSProperties}>
         <div className="filter-bar" role="search">
           <div className="search">
             <Icon name="search" />
@@ -69,7 +69,7 @@ export default function StaffUsers() {
               {rows.length} {plural(rows.length, 'сотрудник', 'сотрудника', 'сотрудников')}
             </span>
           )}
-                  </div>
+        </div>
         {error ? <ErrorBox error={error} onRetry={reload} /> : null}
         <section className="glass table-panel" aria-label="Сотрудники" style={error ? { marginTop: 12 } : undefined}>
           {!rows && !error && <Skeleton h={260} />}
@@ -89,7 +89,7 @@ export default function StaffUsers() {
                     </th>
                   </tr>
                 </thead>
-                                <tbody>
+                <tbody>
                   {rows.map((u) => (
                     <tr key={u.id}>
                       <td data-label="Сотрудник">
@@ -108,7 +108,7 @@ export default function StaffUsers() {
                       <td className="mono small" data-label="Логин">
                         {u.login}
                       </td>
-                                            <td data-label="Роли">
+                      <td data-label="Роли">
                         <div className="row wrap" style={{ '--gap': '4px' } as React.CSSProperties}>
                           {u.roles.map((r) => (
                             <span key={r} className="badge outline">
@@ -152,7 +152,7 @@ export default function StaffUsers() {
         </section>
       </div>
 
-            {create && (
+      {create && (
         <Confirm
           title="Новый сотрудник"
           confirmLabel="Создать"
@@ -168,7 +168,7 @@ export default function StaffUsers() {
             toast('Учётная запись создана', 'ok');
             await reload();
           }}
-                  >
+        >
           <div className="form-grid">
             <label className="field full">
               <span className="label">ФИО</span>

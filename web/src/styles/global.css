@@ -640,7 +640,7 @@ a.brand:hover { text-decoration: none; }
 .user-card { margin-top: 16px; display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 8px 0 12px; border-radius: var(--r-tile);
   border: 1px solid var(--gc-rim); background: var(--gc-fill); box-shadow: var(--gc-glow); }
 .user-card .grow { min-width: 0; }
-.user-name { font: 600 13px/16px var(--font); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }   /* ФИО в две строки */
+.user-name { font: 600 13px/16px var(--font); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }   /* ФИО в две строки */
 .user-roles { font: 450 12px/16px var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .avatar { width: 36px; height: 36px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--solid); box-shadow: var(--solid-shadow); font: 600 13px/1 var(--font-display); color: var(--ink); }
 .main { min-width: 0; max-width: calc(var(--content-max) + 2 * var(--page-x)); padding: 32px var(--page-x) 64px; }

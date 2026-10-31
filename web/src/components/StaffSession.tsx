@@ -40,7 +40,7 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     setMe(m);
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     (async () => {
       if (await staffApi.refresh()) {
         try {
@@ -64,7 +64,7 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     channel.current?.postMessage({ type: 'logout', reason });
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') return;
     const ch = new BroadcastChannel('ege-staff');
     channel.current = ch;
@@ -79,7 +79,7 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     return () => ch.close();
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     if (!me) return;
     let lastBroadcast = 0;
     const onAct = () => {

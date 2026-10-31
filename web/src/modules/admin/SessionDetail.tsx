@@ -34,7 +34,7 @@ export default function SessionDetail() {
   if (error) return <ErrorBox error={error} onRetry={reload} />;
   if (!s) return <Skeleton h={300} r={24} />;
 
-    const validate = async () => {
+  const validate = async () => {
     setBusy(true);
     setValErr(undefined);
     try {
@@ -63,7 +63,7 @@ export default function SessionDetail() {
   const loadFile = (f?: File) => f && f.text().then((t) => { setCsv(t); setVal(undefined); });
   const stepIdx = STEPS.indexOf(s.resultsStatus);
 
-    return (
+  return (
     <>
       <PageHead
         eyebrow={
@@ -83,7 +83,7 @@ export default function SessionDetail() {
         }
       />
 
-            <div className="bento reveal" style={{ '--i': 1 } as React.CSSProperties}>
+      <div className="bento reveal" style={{ '--i': 1 } as React.CSSProperties}>
         <section className="glass card span-8" aria-labelledby="rooms-h">
           <div className="card-head wrap">
             <h2 id="rooms-h" className="h3">
@@ -94,7 +94,7 @@ export default function SessionDetail() {
               {s.proctoring ? ' · прокторинг' : ''}
             </span>
           </div>
-                    {s.rooms.length ? (
+          {s.rooms.length ? (
             <div className="table-wrap" style={{ margin: '0 -16px' }}>
               <table className="table table-compact">
                 <thead>
@@ -128,7 +128,7 @@ export default function SessionDetail() {
                     );
                   })}
                 </tbody>
-                              </table>
+              </table>
             </div>
           ) : (
             <p className="small muted">Аудитории не назначены.</p>
@@ -139,8 +139,8 @@ export default function SessionDetail() {
             </p>
           )}
         </section>
-        
-                <section className="glass card span-4 t-span-12 tile-col" aria-labelledby="res-h">
+
+        <section className="glass card span-4 t-span-12 tile-col" aria-labelledby="res-h">
           <div className="card-head">
             <h2 id="res-h" className="h3">
               Результаты
@@ -182,7 +182,7 @@ export default function SessionDetail() {
           </div>
         </section>
 
-                {s.status === 'preparation' && (
+        {s.status === 'preparation' && (
           <section className="glass card span-12" aria-labelledby="alloc-h">
             <div className="card-head wrap">
               <div className="stack" style={{ '--gap': '4px' } as React.CSSProperties}>
@@ -198,7 +198,7 @@ export default function SessionDetail() {
                 <input type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => loadFile(e.target.files?.[0])} />
               </label>
             </div>
-                        <div className="stack">
+            <div className="stack">
               <textarea className="textarea mono" rows={6} value={csv} onChange={(e) => { setCsv(e.target.value); setVal(undefined); }} placeholder={'код_участника;код_ППЭ;аудитория;место\n7701-001-0001;7701;101;01'} aria-label="Содержимое файла распределения" />
               <div className="row wrap" style={{ '--gap': '8px' } as React.CSSProperties}>
                 <button type="button" className="btn" onClick={validate} disabled={!csv.trim() || busy}>
@@ -209,7 +209,7 @@ export default function SessionDetail() {
                 </button>
               </div>
               {valErr ? <ErrorBox error={valErr} /> : null}
-                            {val && (
+              {val && (
                 <div className="tile card-tight stack fade-in" style={{ '--gap': '12px' } as React.CSSProperties} role="status">
                   {val.errors.length ? (
                     <>
@@ -249,7 +249,7 @@ export default function SessionDetail() {
         )}
       </div>
 
-            {publish && (
+      {publish && (
         <Confirm
           title="Опубликовать результаты?"
           confirmLabel="Опубликовать"

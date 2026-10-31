@@ -85,7 +85,7 @@ export function useExam(secret: string | null) {
   const [loginError, setLoginError] = useState<string>();
   const [loadingStep, setLoadingStep] = useState('');
 
-    const pkgRef = useRef<KimPackage>();
+  const pkgRef = useRef<KimPackage>();
   const offsetRef = useRef(0);
   const seqRef = useRef(0);
   const dirty = useRef(new Map<string, LocalAnswer>());
@@ -110,7 +110,7 @@ export function useExam(secret: string | null) {
   answersRef.current = answers;
   notesRef.current = notes;
 
-    const wsHeaders = useMemo(() => (secret ? { 'x-workstation-secret': secret } : undefined), [secret]);
+  const wsHeaders = useMemo(() => (secret ? { 'x-workstation-secret': secret } : undefined), [secret]);
   const serverNow = useCallback(() => Date.now() + offsetRef.current, []);
   const serverIso = useCallback(() => new Date(serverNow()).toISOString(), [serverNow]);
 
@@ -129,7 +129,7 @@ export function useExam(secret: string | null) {
     return s;
   }, []);
 
-    // ---------- локальная копия (NFR-10: не реже 1 раза в 2 с) ----------
+  // ---------- локальная копия (NFR-10: не реже 1 раза в 2 с) ----------
   const persistLocal = useCallback(() => {
     const s = stateRef.current;
     if (!s) return;
@@ -138,7 +138,7 @@ export function useExam(secret: string | null) {
     void saveSnapshot({ attemptId: s.attemptId, answers: snapAnswers, notes: notesRef.current, queue: queueRef.current, seq: seqRef.current, savedAt: Date.now() });
   }, []);
 
-    // ---------- отправка очереди (FR-10, FR-11) ----------
+  // ---------- отправка очереди (FR-10, FR-11) ----------
   const flush = useCallback(async (): Promise<boolean> => {
     const s = stateRef.current;
     if (!s) return dirty.current.size === 0;
@@ -150,8 +150,7 @@ export function useExam(secret: string | null) {
     flushing.current = true;
     flushAgain.current = false;
     flushStarted.current = Date.now();
-
-        try {
+    try {
       const items = [...dirty.current.entries()].sort((a, b) => a[1].seq - b[1].seq);
       for (const [taskId, a] of items) {
         const v = versions.current.get(taskId);
@@ -166,8 +165,7 @@ export function useExam(secret: string | null) {
           setSavedAt(res.savedAt);
           lastOk.current = Date.now();
           setOnline(true);
-
-                  } catch (e) {
+        } catch (e) {
           if (e instanceof ApiError && e.status === 412) {
             // Автор ответа один: берём текущую версию и применяем локальное изменение поверх неё (7.5 ТЗ КЧ)
             versions.current.set(taskId, (e.problem as { currentVersion?: number }).currentVersion ?? 0);
@@ -188,8 +186,7 @@ export function useExam(secret: string | null) {
           return false;
         }
       }
-
-            // заметки и служебные операции
+      // заметки и служебные операции
       const q = [...queueRef.current];
       for (const item of q) {
         try {
@@ -217,7 +214,7 @@ export function useExam(secret: string | null) {
   }, [fetchState, persistLocal]);
   flushRef.current = flush;
 
-    // ---------- КИМ: ключ, расшифровка, готовность (FR-04) ----------
+  // ---------- КИМ: ключ, расшифровка, готовность (FR-04) ----------
   const ensurePackage = useCallback(
     async (roomId: string) => {
       if (pkgRef.current) return pkgRef.current;
@@ -240,7 +237,7 @@ export function useExam(secret: string | null) {
     [ensurePackage],
   );
 
-    const startAttempt = useCallback(
+  const startAttempt = useCallback(
     async (s: AttemptStateDto) => {
       setPhase('loading');
       const timer = setTimeout(() => setLoadingStep('Подготовка занимает больше обычного. Организатор уведомлён.'), 60_000);
@@ -280,7 +277,7 @@ export function useExam(secret: string | null) {
     [fetchState, flush, openVariant, serverIso],
   );
 
-    const route = useCallback(
+  const route = useCallback(
     (s: AttemptStateDto) => {
       if (FINAL_STATES.includes(s.state)) {
         setPhase('final');
@@ -293,7 +290,7 @@ export function useExam(secret: string | null) {
     [startAttempt],
   );
 
-    // ---------- запуск: восстановление сеанса или проверка рабочего места ----------
+  // ---------- запуск: восстановление сеанса или проверка рабочего места ----------
   useEffect(() => {
     if (!secret) {
       setPhase('fatal');
@@ -326,7 +323,7 @@ export function useExam(secret: string | null) {
     };
   }, [secret, wsHeaders, fetchState, route]);
 
-    // ---------- проверка рабочего места (FR-01) ----------
+  // ---------- проверка рабочего места (FR-01) ----------
   const runChecks = useCallback(async () => {
     if (!ws) return;
     const browser = detectBrowser();
@@ -343,24 +340,7 @@ export function useExam(secret: string | null) {
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
     const result: WorkstationCheck = { browser: false, screen: false, fullscreen: false, latencyMs: -1, kimPreloaded: false, passed: false };
 
-      // ---------- проверка рабочего места (FR-01) ----------
-  const runChecks = useCallback(async () => {
-    if (!ws) return;
-    const browser = detectBrowser();
-    const base: CheckItem[] = [
-      { id: 'browser', label: 'Версия браузера', status: 'pending', required: true, help: 'Используйте Яндекс Браузер или Chromium 120+.' },
-      { id: 'screen', label: 'Разрешение экрана', status: 'pending', required: true, help: 'Нужно не менее 1280 × 720.' },
-      { id: 'fullscreen', label: 'Полноэкранный режим', status: 'pending', required: ws.session.proctoring, help: 'Разрешите полноэкранный режим в настройках браузера.' },
-      { id: 'latencyMs', label: 'Отклик сервера', status: 'pending', required: true, help: 'Проверьте подключение рабочего места к сети ППЭ.' },
-      { id: 'kimPreloaded', label: 'Пакет заданий загружен', status: 'pending', required: true, help: 'Повторите проверку — загрузка продолжится с места обрыва.' },
-    ];
-    setChecks(base);
-    const set = (id: CheckItem['id'], status: CheckItem['status'], detail?: string) =>
-      setChecks((cs) => cs.map((c) => (c.id === id ? { ...c, status, detail } : c)));
-    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    const result: WorkstationCheck = { browser: false, screen: false, fullscreen: false, latencyMs: -1, kimPreloaded: false, passed: false };
-
-        await wait(350);
+    await wait(350);
     result.browser = browser.ok;
     set('browser', browser.ok ? 'ok' : 'fail', browser.name);
     await wait(250);
@@ -400,7 +380,7 @@ export function useExam(secret: string | null) {
     return requiredOk;
   }, [ws, ensurePackage, wsHeaders]);
 
-    // ---------- вход (FR-02) ----------
+  // ---------- вход (FR-02) ----------
   const login = useCallback(
     async (participantCode: string, accessCode: string) => {
       setLoginError(undefined);
@@ -419,7 +399,7 @@ export function useExam(secret: string | null) {
     [secret, fetchState, route],
   );
 
-    // ---------- канал событий ----------
+  // ---------- канал событий ----------
   const attemptId = state?.attemptId;
   useEffect(() => {
     if (!attemptId) return;
@@ -455,7 +435,7 @@ export function useExam(secret: string | null) {
     return ch.start();
   }, [attemptId, fetchState, route]);
 
-    const phaseRef = useRef(phase);
+  const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
   // ---------- такт: таймер, автосохранение, обнаружение обрыва ----------
@@ -468,7 +448,7 @@ export function useExam(secret: string | null) {
     return () => clearInterval(t);
   }, [phase]);
 
-    useEffect(() => {
+  useEffect(() => {
     if (phase !== 'exam') return;
     const save = setInterval(() => {
       if (dirty.current.size || queueRef.current.length) void flush();
@@ -491,7 +471,7 @@ export function useExam(secret: string | null) {
     };
   }, [phase, flush, online]);
 
-    // При закрытии вкладки — последняя локальная копия
+  // При закрытии вкладки — последняя локальная копия
   useEffect(() => {
     const h = () => persistLocal();
     window.addEventListener('pagehide', h);
@@ -524,7 +504,7 @@ export function useExam(secret: string | null) {
     })();
   }, [phase, remainingMs, flush, fetchState, route]);
 
-    // ---------- контроль целостности (FR-18, FR-19) ----------
+  // ---------- контроль целостности (FR-18, FR-19) ----------
   useEffect(() => {
     if (phase !== 'exam' || !ws?.session.proctoring) return;
     const push = (type: string, text?: string) => {
@@ -543,8 +523,7 @@ export function useExam(secret: string | null) {
         push('copy', 'Копирование текста заданий недоступно. Для заметок используйте черновик.');
       }
     };
-
-        const onPaste = (e: ClipboardEvent) => {
+    const onPaste = (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData('text') ?? '';
       const own = Object.values(answersRef.current).some((a) => a.includes(text)) || Object.values(notesRef.current).some((n) => n.includes(text));
       if (!own && text.length > 0) {
@@ -566,5 +545,165 @@ export function useExam(secret: string | null) {
       }
     };
     document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('copy', onCopy);
+    document.addEventListener('cut', onCopy);
+    document.addEventListener('paste', onPaste, true);
+    window.addEventListener('beforeprint', onPrint);
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('contextmenu', onCtx);
+    const sender = setInterval(() => {
+      if (!eventsBuf.current.length) return;
+      const events = eventsBuf.current.splice(0, 50);
+      queueRef.current.push({ id: uuid(), type: 'events', idempotencyKey: uuid(), payload: { events } });
+      void flush();
+    }, EVENTS_MS);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('copy', onCopy);
+      document.removeEventListener('cut', onCopy);
+      document.removeEventListener('paste', onPaste, true);
+      window.removeEventListener('beforeprint', onPrint);
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('contextmenu', onCtx);
+      clearInterval(sender);
+    };
+  }, [phase, ws, serverIso, flush]);
 
-    
+  // ---------- действия участника ----------
+  const localTimer = useRef<number>();
+  const scheduleLocal = useCallback(() => {
+    clearTimeout(localTimer.current);
+    localTimer.current = window.setTimeout(persistLocal, LOCAL_MS / 3);
+  }, [persistLocal]);
+
+  const saveTimer = useRef<number>();
+  const setAnswer = useCallback(
+    (taskId: string, kind: 'short', value: string) => {
+      setAnswers((a) => ({ ...a, [taskId]: value }));
+      seqRef.current += 1;
+      dirty.current.set(taskId, { kind, value, seq: seqRef.current, changedAt: serverIso(), key: uuid() });
+      syncPending();
+      scheduleLocal();
+      clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(() => void flushRef.current?.(), ANSWER_DEBOUNCE_MS);
+    },
+    [serverIso, scheduleLocal],
+  );
+
+  const noteTimer = useRef<Record<string, number>>({});
+  const setNote = useCallback(
+    (taskId: string, text: string) => {
+      setNotes((n) => ({ ...n, [taskId]: text }));
+      notesRef.current = { ...notesRef.current, [taskId]: text };
+      scheduleLocal();
+      clearTimeout(noteTimer.current[taskId]);
+      noteTimer.current[taskId] = window.setTimeout(() => {
+        queueRef.current = queueRef.current.filter((q) => !(q.type === 'note' && q.taskId === taskId));
+        queueRef.current.push({ id: uuid(), type: 'note', taskId, value: notesRef.current[taskId] ?? '', idempotencyKey: uuid() });
+        syncPending();
+        // черновик отправляется после паузы во вводе — состояние «Сохраняется…» не висит до автосохранения
+        void flushRef.current?.();
+      }, 1500);
+    },
+    [scheduleLocal],
+  );
+
+  const select = useCallback(
+    (taskId: string) => {
+      setCurrentId(taskId);
+      queueRef.current = queueRef.current.filter((q) => q.type !== 'ui');
+      queueRef.current.push({ id: uuid(), type: 'ui', idempotencyKey: uuid(), payload: { lastTaskId: taskId } });
+      void flush();
+    },
+    [flush],
+  );
+
+  const toggleFlag = useCallback(
+    (taskId: string) => {
+      setFlags((f) => {
+        const next = f.includes(taskId) ? f.filter((x) => x !== taskId) : [...f, taskId];
+        queueRef.current = queueRef.current.filter((q) => q.type !== 'ui');
+        queueRef.current.push({ id: uuid(), type: 'ui', idempotencyKey: uuid(), payload: { flags: next, lastTaskId: taskId } });
+        void flush();
+        return next;
+      });
+    },
+    [flush],
+  );
+
+  const begin = useCallback(async () => {
+    const s = stateRef.current;
+    if (!s) return;
+    if (ws?.session.proctoring && document.fullscreenEnabled && !document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch {
+        /* продолжаем без полноэкранного режима */
+      }
+    }
+    const fresh = await fetchState(s.attemptId);
+    route(fresh);
+  }, [ws, fetchState, route]);
+
+  const finish = useCallback(async () => {
+    const s = stateRef.current;
+    if (!s) return false;
+    const ok = await flush();
+    if (!ok) return false;
+    try {
+      await examApi.post(`/attempts/${s.attemptId}/finish`, {}, { idempotencyKey: uuid(), retries: 3 });
+      const ns = await fetchState(s.attemptId);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+      route(ns);
+      return true;
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        const ns = await fetchState(s.attemptId);
+        route(ns);
+        return true;
+      }
+      setOnline(false);
+      return false;
+    }
+  }, [flush, fetchState, route]);
+
+  return {
+    phase,
+    ws,
+    checks,
+    runChecks,
+    goLogin: () => setPhase('login'),
+    login,
+    loginError,
+    state,
+    variant,
+    currentId,
+    select,
+    answers,
+    setAnswer,
+    notes,
+    setNote,
+    flags,
+    toggleFlag,
+    online,
+    savedAt,
+    pendingCount,
+    dirtyIds,
+    remainingMs,
+    serverNow,
+    notice,
+    dismissNotice: () => setNotice(undefined),
+    messages,
+    begin,
+    finish,
+    flush,
+    fatal,
+    loadingStep,
+  };
+}
+
+export type ExamEngine = ReturnType<typeof useExam>;
