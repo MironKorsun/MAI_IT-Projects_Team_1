@@ -1,0 +1,101 @@
+openapi: 3.1.0
+info:
+  title: ВП ТС ЕГЭ — API серверной части
+  version: 1.0.0
+  description: |
+    Контракты ТЗ КЧ (раздел 7) и ТЗ СЧ (раздел 7). JSON camelCase, ISO 8601 UTC, ошибки — application/problem+json (RFC 9457).
+    Канал событий — wss://…/ws/v1: сообщение auth с маркером, ping каждые 25 с, события room.started, attempt.timeChanged,
+    attempt.terminated, room.message, participant.statusChanged, integrity.event, workstation.checked, auth.lockout.
+servers:
+  - url: /api/v1
+paths:
+  /auth/participant/login:
+    post:
+      tags: [Доступ]
+      summary: "Вход участника по идентификатору и коду аудитории (FR-01, FR-02)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ParticipantLogin' }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /auth/staff/login:
+    post:
+      tags: [Доступ]
+      summary: "Вход персонала (FR-02, FR-03)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StaffLogin' }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /auth/results/login:
+    post:
+      tags: [Доступ]
+      summary: "Вход участника вне ППЭ для М6 (учебное допущение: код + PIN)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /auth/refresh:
+    post:
+      tags: [Доступ]
+      summary: "Ротация маркеров по cookie обновления (FR-04)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /auth/logout:
+    post:
+      tags: [Доступ]
+      summary: "Выход, отзыв сеанса (FR-04, FR-05)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /me:
+    get:
+      tags: [Доступ]
+      summary: "Профиль и роли без реквизитов документов (FR-08)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /workstations/self:
+    get:
+      tags: [Рабочее место]
+      summary: "Сведения о рабочем месте по секрету"
+      security: [{ workstationSecret: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
