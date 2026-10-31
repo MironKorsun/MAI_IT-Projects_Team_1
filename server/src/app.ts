@@ -1,0 +1,22 @@
+import Fastify, { type FastifyError } from 'fastify';
+import cookie from '@fastify/cookie';
+import websocket from '@fastify/websocket';
+import fastifyStatic from '@fastify/static';
+import { existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { config } from './config';
+import { ApiError } from './errors';
+import { verifyAccess } from './auth';
+import { registerSocket } from './events';
+import { db, commitNow } from './db';
+import { ping } from './store';
+import authRoutes from './routes/auth';
+import examRoutes from './routes/exam';
+import roomRoutes from './routes/rooms';
+import adminRoutes from './routes/admin';
+import monitoringRoutes from './routes/monitoring';
+import resultsRoutes from './routes/results';
+import analyticsRoutes from './routes/analytics';
+import publicRoutes from './routes/public';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

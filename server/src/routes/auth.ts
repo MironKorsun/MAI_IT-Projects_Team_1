@@ -79,3 +79,111 @@ export default async function authRoutes(app: FastifyInstance) {
       return { ...tokens, attemptId: attempt.id };
     },
   );
+
+  /** Вход персонала (ТЗ СЧ FR-02, FR-03). */
+  app.post<{ Body: { login: string; password: string } }>(
+    '/auth/staff/login',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['login', 'password'],
+          properties: { login: { type: 'string', maxLength: 64 }, password: { type: 'string', maxLength: 128 } },
+        },
+      },
+    },
+    async (req, reply) => {
+      const login = req.body.login.trim().toLowerCase();
+      const key = `staff:${login}`;
+      checkLock(key);
+      const user = db.staff.find((u) => u.login === login);
+      if (!user || user.blocked || !verifyPassword(req.body.password, user.passwordHash)) {
+        const locked = registerFailure(key);
+        audit({ type: 'auth.failed', category: 'Аутентификация', actorRole: 'staff', object: login, requestId: req.id, result: 'error' });
+        if (locked) audit({ type: 'auth.lockout', category: 'Аутентификация', actorRole: 'system', object: login });
+        throw new ApiError(401, 'INVALID_CREDENTIALS', 'Неверный логин или пароль');
+      }
+      clearFailures(key);
+      audit({ type: 'auth.login', category: 'Аутентификация', actorRole: user.roles.join(','), actorId: user.id, requestId: req.id });
+      const roomIds = db.rooms.filter((r) => r.organizerIds.includes(user.id)).map((r) => r.id);
+      return issue(reply, { kind: 'staff', sub: user.id, roles: user.roles, roomIds });
+    },
+  );
+
+  /** Вход участника вне ППЭ для просмотра результатов (М6). Учебное допущение: код участника + PIN. */
+  app.post<{ Body: { participantCode: string; pin: string } }>(
+    '/auth/results/login',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['participantCode', 'pin'],
+          properties: { participantCode: { type: 'string', maxLength: 32 }, pin: { type: 'string', maxLength: 16 } },
+        },
+      },
+    },
+    async (req, reply) => {
+      const code = req.body.participantCode.trim();
+      const key = `results:${code}`;
+      checkLock(key);
+      const p = db.participants.find((x) => x.code === code);
+      if (!p || !verifyPassword(req.body.pin, p.pinHash)) {
+        registerFailure(key);
+        audit({ type: 'auth.failed', category: 'Аутентификация', actorRole: 'participant', object: 'М6', requestId: req.id, result: 'error' });
+        throw new ApiError(401, 'INVALID_CREDENTIALS', 'Неверный код участника или PIN');
+      }
+      clearFailures(key);
+      audit({ type: 'auth.login', category: 'Аутентификация', actorRole: 'participant', actorId: p.id, object: 'М6', requestId: req.id });
+      return issue(reply, { kind: 'results', sub: p.id, roles: [] });
+    },
+  );
+
+  app.post<{ Body: { kind: PrincipalKind } }>(
+    '/auth/refresh',
+    { schema: { body: { type: 'object', additionalProperties: false, required: ['kind'], properties: { kind: kindSchema } } } },
+    async (req, reply) => refresh(req, reply, req.body.kind),
+  );
+
+  app.post<{ Body: { kind: PrincipalKind; reason?: string } }>(
+    '/auth/logout',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['kind'],
+          properties: { kind: kindSchema, reason: { type: 'string', enum: ['user', 'idle'] } },
+        },
+      },
+    },
+    async (req, reply) => {
+      try {
+        await authenticate(req);
+      } catch {
+        /* выход возможен и с истёкшим маркером доступа */
+      }
+      logout(req, reply, req.body.kind);
+      audit({
+        type: req.body.reason === 'idle' ? 'auth.idleTimeout' : 'auth.logout',
+        category: 'Аутентификация',
+        actorRole: req.body.kind,
+        actorId: req.principal?.sub,
+        requestId: req.id,
+      });
+      return reply.code(204).send();
+    },
+  );
+
+  /** Профиль без реквизитов документов (ТЗ СЧ FR-08). */
+  app.get('/me', async (req) => {
+    const p = await authenticate(req);
+    if (p.kind === 'staff') {
+      const u = byId(db.staff, p.sub)!;
+      return { kind: 'staff', id: u.id, login: u.login, fullName: u.fullName, roles: u.roles, roomIds: p.roomIds ?? [] };
+    }
+    const part = byId(db.participants, p.sub)!;
+    return { kind: p.kind, id: part.id, code: part.code, displayName: displayName(part), firstName: part.firstName };
+  });
+}
