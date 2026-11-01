@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 
+/** Минимальный рендер инструкции КИМ (instruction.md): заголовки, списки, **жирный**, `код`. */
 function inline(s: string): ReactNode[] {
   return s.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((t, i) =>
     t.startsWith('**') ? <strong key={i}>{t.slice(2, -2)}</strong> : t.startsWith('`') ? <code key={i} className="mono">{t.slice(1, -1)}</code> : <Fragment key={i}>{t}</Fragment>,
@@ -21,7 +22,6 @@ export function Markdown({ text, skipTitle }: { text: string; skipTitle?: boolea
     );
     list = null;
   };
-
   for (const line of text.split('\n')) {
     const h = /^(#{1,3})\s+(.*)$/.exec(line);
     const ul = /^\s*-\s+(.*)$/.exec(line);

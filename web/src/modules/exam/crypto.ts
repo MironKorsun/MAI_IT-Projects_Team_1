@@ -1,5 +1,6 @@
 import type { VariantContent } from '../../../../shared/types';
 
+/** Расшифровка варианта из заранее загруженного пакета ключом, выданным по событию старта (ТЗ КЧ FR-04). */
 export interface KimPackage {
   roomId: string;
   variants: { variantId: string; iv: string; data: string; checksum: string }[];
