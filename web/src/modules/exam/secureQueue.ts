@@ -1,3 +1,9 @@
+/**
+ * Зашифрованная локальная очередь изменений М1 (ТЗ КЧ FR-11, NFR-10, NFR-19):
+ * IndexedDB + AES-GCM 256 бит с неизвлекаемым ключом Web Crypto API.
+ * Хранятся только ответы и заметки — маркеры аутентификации сюда не попадают (NFR-15).
+ */
+
 export interface QueueItem {
   id: string;
   type: 'answer' | 'note' | 'ui' | 'events';
@@ -42,22 +48,22 @@ async function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
 }
 
 async function key(): Promise<CryptoKey> {
-    const existing = await idb<CryptoKey | undefined>('readonly', (s) => s.get('key'));
-    if (existing) return existing;
-    const k = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);  
-    await idb('readwrite', (s) => s.put(k, 'key'));  
-    return k;
+  const existing = await idb<CryptoKey | undefined>('readonly', (s) => s.get('key'));
+  if (existing) return existing;
+  const k = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  await idb('readwrite', (s) => s.put(k, 'key'));
+  return k;
 }
 
 export async function saveSnapshot(snap: Snapshot) {
-    try {
-        const k = await key();
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const data = await crypto.subtle.encrypt({ name: 'AES-GCM' }, k, new TextEncoder().encode(JSON.stringify(snap)));
-        await idb('readwrite', (s) => s.put({ iv, data }, `snap:${snap.attemptId}`));
-    } catch {
-        /* хранилище недоступно — работа продолжается в памяти */
-    }    
+  try {
+    const k = await key();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify(snap)));
+    await idb('readwrite', (s) => s.put({ iv, data }, `snap:${snap.attemptId}`));
+  } catch {
+    /* хранилище недоступно — работа продолжается в памяти */
+  }
 }
 
 export async function loadSnapshot(attemptId: string): Promise<Snapshot | undefined> {

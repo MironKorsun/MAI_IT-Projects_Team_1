@@ -57,4 +57,4 @@ export function relTime(iso?: string, now = Date.now()) {
 
 export const fmtNum = (n: number, d = 0) => n.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
 /** Процент в едином виде для всего интерфейса: десятичная запятая и неразрывный пробел — «93,1 %». */
-export const fmtPct = (n: number, d = 1) => `${fmtNum(n, d)} %`;
+export const fmtPct = (n: number, d = 1) => `${fmtNum(n, d)}\u00a0%`;
