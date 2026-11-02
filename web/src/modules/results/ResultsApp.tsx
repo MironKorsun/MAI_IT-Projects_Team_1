@@ -266,3 +266,56 @@ function AppealCard({ r, appeals, i, onAppeal }: { r: MyResultDto; appeals: Appe
           Подать апелляцию
         </button>
       </div>
+            {appeals.length > 0 && (
+        <div className="stack" style={{ '--gap': '8px' } as CSSProperties}>
+          {appeals.map((a) => (
+            <div key={a.id} className="tile card-tight stack" style={{ '--gap': '12px' } as CSSProperties}>
+              <div className="row between wrap">
+                <span className="small">
+                  <b className="mono">{a.number}</b> · задания {a.taskNumbers.join(', ')}
+                </span>
+                <StatusBadge tone={a.status === 'accepted' ? 'ok' : a.status === 'rejected' ? 'bad' : 'accent'}>{APPEAL_STATUS_LABEL[a.status]}</StatusBadge>
+              </div>
+              <ol className="timeline" aria-label="История рассмотрения">
+                {a.history.map((h, k) => (
+                  <li key={k} className="done">
+                    <span className="small strong">{APPEAL_STATUS_LABEL[h.status]}</span>
+                    <span className="tiny muted"> · {fmtDateTime(h.at)}</span>
+                    {h.comment && <div className="small ink2">{h.comment}</div>}
+                  </li>
+                ))}
+                {isActive(a) && (
+                  <li className="pending">
+                    <span className="small strong ink2">Решение конфликтной комиссии</span>
+                    <span className="tiny muted"> · ожидается</span>
+                  </li>
+                )}
+              </ol>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AppealForm({ r, onClose, onDone }: { r: MyResultDto; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const [tasks, setTasks] = useState<number[]>([]);
+  const [text, setText] = useState('');
+  const [err, setErr] = useState<unknown>();
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    setErr(undefined);
+    try {
+      const a = await resultsApi.post<AppealDto>('/me/appeals', { sessionId: r.sessionId, taskNumbers: tasks, text });
+      toast(<span>Апелляция зарегистрирована: <b>{a.number}</b> от {fmtDateTime(a.createdAt)}</span>, 'ok');
+      onDone();
+      onClose();
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  };
