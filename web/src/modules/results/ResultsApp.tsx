@@ -222,3 +222,47 @@ function ResultCard({ r, appeals, i }: { r: MyResultDto; appeals: AppealDto[]; i
           <dd>{fmtDateTime(r.publishedAt)}</dd>
         </dl>
       </div>
+            <h3 className="h3" style={{ margin: '32px 0 12px' }}>
+        Ответы по заданиям
+      </h3>
+      <ul className="task-results" role="list">
+        {r.tasks.map((t) => {
+          const ok = t.score > 0;
+          return (
+            <li key={t.number} className={`task-result ${ok ? 'ok' : 'no'}`} title={`Ваш ответ: ${t.answer || 'нет ответа'}`}>
+              <span className="n" aria-hidden="true">
+                № {t.number}
+              </span>
+              <span className="a" aria-hidden="true">
+                <Icon name={ok ? 'check' : 'x'} size={16} />
+                <span className="ans">{t.answer ? t.answer.replace(/^-/, '−') : '—'}</span>
+                <span className="s">{t.score}</span>
+              </span>
+              <span className="sr-only">
+                Задание {t.number}: {ok ? 'верно' : 'неверно'}, ответ {t.answer || 'не дан'}, {t.score} {plural(t.score, 'балл', 'балла', 'баллов')}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </article>
+  );
+}
+
+function AppealCard({ r, appeals, i, onAppeal }: { r: MyResultDto; appeals: AppealDto[]; i: number; onAppeal: () => void }) {
+  const now = new Date().toISOString();
+  const windowOpen = now >= r.appealWindow.from && now <= r.appealWindow.to;
+  const active = appeals.some(isActive);
+  return (
+    <section className="glass card reveal" style={at(i)} aria-labelledby={`ap-${r.sessionId}`}>
+      <div className="card-head wrap">
+        <div className="stack" style={{ '--gap': '4px' } as CSSProperties}>
+          <h3 id={`ap-${r.sessionId}`} className="h3">
+            Апелляция о несогласии с баллами
+          </h3>
+          <span className="meta">{windowOpen ? `Подать можно до ${fmtDateTime(r.appealWindow.to)}` : `Срок подачи истёк ${fmtDateTime(r.appealWindow.to)}`}</span>
+        </div>
+        <button type="button" className="btn btn-lg" disabled={!windowOpen || active} onClick={onAppeal} title={!windowOpen ? 'Окно подачи апелляции закрыто' : active ? 'Апелляция уже на рассмотрении' : undefined}>
+          Подать апелляцию
+        </button>
+      </div>
