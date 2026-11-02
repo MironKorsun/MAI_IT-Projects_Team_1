@@ -12,9 +12,9 @@ import { db, commitNow } from './db';
 import { ping } from './store';
 import authRoutes from './routes/auth';
 import examRoutes from './routes/exam';
-//import roomRoutes from './routes/rooms';
+import roomRoutes from './routes/rooms';
 import adminRoutes from './routes/admin';
-//import monitoringRoutes from './routes/monitoring';
+import monitoringRoutes from './routes/monitoring';
 import resultsRoutes from './routes/results';
 import analyticsRoutes from './routes/analytics';
 import publicRoutes from './routes/public';
@@ -104,13 +104,13 @@ export async function buildApp() {
     reply.code(apiErr.status).type('application/problem+json').send(apiErr.toProblem(req.url.split('?')[0], req.id));
   });
 
-  await app.register(
+    await app.register(
     async (api) => {
       await api.register(authRoutes);
       await api.register(examRoutes);
-      //await api.register(roomRoutes);
+      await api.register(roomRoutes);
       await api.register(adminRoutes);
-      //await api.register(monitoringRoutes);
+      await api.register(monitoringRoutes);
       await api.register(resultsRoutes);
       await api.register(analyticsRoutes);
       await api.register(publicRoutes);
@@ -130,7 +130,7 @@ export async function buildApp() {
     });
   });
 
-  app.get('/health/live', async () => ({ status: 'ok' }));
+    app.get('/health/live', async () => ({ status: 'ok' }));
   app.get('/health/ready', async (_req, reply) => {
     try {
       await ping();
