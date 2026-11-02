@@ -104,7 +104,7 @@ export async function buildApp() {
     reply.code(apiErr.status).type('application/problem+json').send(apiErr.toProblem(req.url.split('?')[0], req.id));
   });
 
-    await app.register(
+  await app.register(
     async (api) => {
       await api.register(authRoutes);
       await api.register(examRoutes);
@@ -130,7 +130,7 @@ export async function buildApp() {
     });
   });
 
-    app.get('/health/live', async () => ({ status: 'ok' }));
+  app.get('/health/live', async () => ({ status: 'ok' }));
   app.get('/health/ready', async (_req, reply) => {
     try {
       await ping();
