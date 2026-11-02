@@ -176,3 +176,146 @@ function Results({ name, onLogout }: { name: string; onLogout: () => void }) {
     </main>
   );
 }
+
+const isActive = (a: AppealDto) => a.status === 'registered' || a.status === 'reviewing';
+
+function ResultCard({ r, appeals, i }: { r: MyResultDto; appeals: AppealDto[]; i: number }) {
+  const solved = r.tasks.filter((t) => t.score > 0).length;
+  const main = r.testScore ?? r.grade ?? 0;
+  return (
+    <article className="glass card-lg reveal" style={at(i)} aria-labelledby={`r-${r.sessionId}`}>
+      <div className="card-head wrap">
+        <div className="stack" style={{ '--gap': '4px' } as CSSProperties}>
+          <h2 id={`r-${r.sessionId}`} className="h2">
+            {r.examTitle}
+          </h2>
+          <span className="meta">Экзамен {fmtDate(r.date)}</span>
+        </div>
+        {appeals.some(isActive) ? <StatusBadge tone="accent">Апелляция на рассмотрении</StatusBadge> : <StatusBadge>Результат опубликован</StatusBadge>}
+      </div>
+
+            <div className="score-hero">
+        <div className="tile-accent inner card score-tile">
+          <span className="score-label">{r.testScore !== undefined ? 'Тестовый балл' : 'Отметка'}</span>
+          <span className="score-value">{main}</span>
+          <span className="score-primary">
+            Первичный балл: {r.primaryScore} из {r.maxPrimary}
+          </span>
+          {r.passed ? (
+            <StatusBadge tone="ok" icon="checkCircle">
+              Порог {r.threshold} пройден
+            </StatusBadge>
+          ) : (
+            <StatusBadge tone="warn" icon="alert">
+              Ниже порога {r.threshold}
+            </StatusBadge>
+          )}
+        </div>
+        <dl className="kv">
+          <dt>Решено верно</dt>
+          <dd>
+            {solved} из {r.tasks.length} {plural(r.tasks.length, 'задания', 'заданий', 'заданий')}
+          </dd>
+          <dt>Минимальный порог</dt>
+          <dd>{r.threshold}</dd>
+          <dt>Дата публикации</dt>
+          <dd>{fmtDateTime(r.publishedAt)}</dd>
+        </dl>
+      </div>
+            <h3 className="h3" style={{ margin: '32px 0 12px' }}>
+        Ответы по заданиям
+      </h3>
+      <ul className="task-results" role="list">
+        {r.tasks.map((t) => {
+          const ok = t.score > 0;
+          return (
+            <li key={t.number} className={`task-result ${ok ? 'ok' : 'no'}`} title={`Ваш ответ: ${t.answer || 'нет ответа'}`}>
+              <span className="n" aria-hidden="true">
+                № {t.number}
+              </span>
+              <span className="a" aria-hidden="true">
+                <Icon name={ok ? 'check' : 'x'} size={16} />
+                <span className="ans">{t.answer ? t.answer.replace(/^-/, '−') : '—'}</span>
+                <span className="s">{t.score}</span>
+              </span>
+              <span className="sr-only">
+                Задание {t.number}: {ok ? 'верно' : 'неверно'}, ответ {t.answer || 'не дан'}, {t.score} {plural(t.score, 'балл', 'балла', 'баллов')}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </article>
+  );
+}
+
+function AppealCard({ r, appeals, i, onAppeal }: { r: MyResultDto; appeals: AppealDto[]; i: number; onAppeal: () => void }) {
+  const now = new Date().toISOString();
+  const windowOpen = now >= r.appealWindow.from && now <= r.appealWindow.to;
+  const active = appeals.some(isActive);
+  return (
+    <section className="glass card reveal" style={at(i)} aria-labelledby={`ap-${r.sessionId}`}>
+      <div className="card-head wrap">
+        <div className="stack" style={{ '--gap': '4px' } as CSSProperties}>
+          <h3 id={`ap-${r.sessionId}`} className="h3">
+            Апелляция о несогласии с баллами
+          </h3>
+          <span className="meta">{windowOpen ? `Подать можно до ${fmtDateTime(r.appealWindow.to)}` : `Срок подачи истёк ${fmtDateTime(r.appealWindow.to)}`}</span>
+        </div>
+        <button type="button" className="btn btn-lg" disabled={!windowOpen || active} onClick={onAppeal} title={!windowOpen ? 'Окно подачи апелляции закрыто' : active ? 'Апелляция уже на рассмотрении' : undefined}>
+          Подать апелляцию
+        </button>
+      </div>
+            {appeals.length > 0 && (
+        <div className="stack" style={{ '--gap': '8px' } as CSSProperties}>
+          {appeals.map((a) => (
+            <div key={a.id} className="tile card-tight stack" style={{ '--gap': '12px' } as CSSProperties}>
+              <div className="row between wrap">
+                <span className="small">
+                  <b className="mono">{a.number}</b> · задания {a.taskNumbers.join(', ')}
+                </span>
+                <StatusBadge tone={a.status === 'accepted' ? 'ok' : a.status === 'rejected' ? 'bad' : 'accent'}>{APPEAL_STATUS_LABEL[a.status]}</StatusBadge>
+              </div>
+              <ol className="timeline" aria-label="История рассмотрения">
+                {a.history.map((h, k) => (
+                  <li key={k} className="done">
+                    <span className="small strong">{APPEAL_STATUS_LABEL[h.status]}</span>
+                    <span className="tiny muted"> · {fmtDateTime(h.at)}</span>
+                    {h.comment && <div className="small ink2">{h.comment}</div>}
+                  </li>
+                ))}
+                {isActive(a) && (
+                  <li className="pending">
+                    <span className="small strong ink2">Решение конфликтной комиссии</span>
+                    <span className="tiny muted"> · ожидается</span>
+                  </li>
+                )}
+              </ol>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AppealForm({ r, onClose, onDone }: { r: MyResultDto; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const [tasks, setTasks] = useState<number[]>([]);
+  const [text, setText] = useState('');
+  const [err, setErr] = useState<unknown>();
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    setErr(undefined);
+    try {
+      const a = await resultsApi.post<AppealDto>('/me/appeals', { sessionId: r.sessionId, taskNumbers: tasks, text });
+      toast(<span>Апелляция зарегистрирована: <b>{a.number}</b> от {fmtDateTime(a.createdAt)}</span>, 'ok');
+      onDone();
+      onClose();
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  };
