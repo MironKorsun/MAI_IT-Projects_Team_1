@@ -145,3 +145,84 @@ export default async function roomRoutes(app: FastifyInstance) {
       return { endsAt: endsAt(a) };
     },
   );
+
+  /** Акт о нарушении → «Удалён» (FR-23). */
+  app.post<{ Params: { id: string }; Body: { type: string; description: string; at?: string } }>(
+    '/attempts/:id/incidents',
+    {
+      preHandler: requireStaff('organizer'),
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['type', 'description'],
+          properties: {
+            type: { type: 'string', enum: INCIDENT_TYPES },
+            description: { type: 'string', minLength: 1, maxLength: 2000 },
+            at: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const { a, room } = attemptForOrganizer(req);
+      if (!['waiting', 'loading', 'inProgress'].includes(a.state)) throw new ApiError(409, FINAL_STATES.includes(a.state) ? 'ATTEMPT_CLOSED' : 'INVALID_STATE');
+      a.incident = { type: req.body.type, description: req.body.description, at: req.body.at ?? nowIso(), by: req.principal!.sub };
+      a.state = 'removed';
+      a.finishedAt = nowIso();
+      a.terminationMessage = `Экзамен прекращён организатором: ${req.body.type.toLowerCase()}. Составлен акт об удалении.`;
+      staffAudit(req, 'attempt.incident', 'Ход попытки', room, a.id, req.body.type);
+      emit('attempt.terminated', a.id, { state: a.state, message: a.terminationMessage }, { attemptId: a.id });
+      status(a);
+      persist();
+      return { state: a.state };
+    },
+  );
+
+  /** Завершение по объективной причине (FR-24). */
+  app.post<{ Params: { id: string }; Body: { reason: string } }>(
+    '/attempts/:id/early-finish',
+    {
+      preHandler: requireStaff('organizer'),
+      schema: { body: { type: 'object', additionalProperties: false, required: ['reason'], properties: { reason: { type: 'string', enum: EARLY_FINISH_REASONS } } } },
+    },
+    async (req) => {
+      const { a, room } = attemptForOrganizer(req);
+      if (!['loading', 'inProgress'].includes(a.state)) throw new ApiError(409, FINAL_STATES.includes(a.state) ? 'ATTEMPT_CLOSED' : 'INVALID_STATE');
+      a.state = 'notCompleted';
+      a.earlyFinishReason = req.body.reason;
+      a.finishedAt = nowIso();
+      a.terminationMessage = `Экзамен завершён по объективной причине: ${req.body.reason.toLowerCase()}. Ответы сохранены.`;
+      staffAudit(req, 'attempt.earlyFinish', 'Ход попытки', room, a.id, req.body.reason);
+      emit('attempt.terminated', a.id, { state: a.state, message: a.terminationMessage }, { attemptId: a.id });
+      status(a);
+      persist();
+      return { state: a.state };
+    },
+  );
+
+  /** Перевод на свободное проверенное место той же аудитории (FR-25). */
+  app.post<{ Params: { id: string }; Body: { workstationId: string } }>(
+    '/attempts/:id/relocate',
+    {
+      preHandler: requireStaff('organizer'),
+      schema: { body: { type: 'object', additionalProperties: false, required: ['workstationId'], properties: { workstationId: { type: 'string' } } } },
+    },
+    async (req) => {
+      const { a, room } = attemptForOrganizer(req);
+      if (FINAL_STATES.includes(a.state)) throw new ApiError(409, 'ATTEMPT_CLOSED');
+      const ws = byId(db.workstations, req.body.workstationId);
+      if (!ws || ws.roomId !== room.id) throw invalid([{ pointer: '/workstationId', detail: 'Место не принадлежит аудитории' }], 'VALIDATION_FAILED', 422);
+      if (!ws.check?.passed) throw invalid([{ pointer: '/workstationId', detail: 'Место не прошло проверку' }], 'VALIDATION_FAILED', 422);
+      if (db.attempts.some((x) => x.workstationId === ws.id && x.id !== a.id))
+        throw invalid([{ pointer: '/workstationId', detail: 'Место занято' }], 'VALIDATION_FAILED', 422);
+      const from = byId(db.workstations, a.workstationId)?.label;
+      a.workstationId = ws.id;
+      revokeAttemptSessions(a.id);
+      staffAudit(req, 'attempt.relocated', 'Ход попытки', room, a.id, `${from} → ${ws.label}`);
+      status(a);
+      persist();
+      return { workstationId: ws.id, label: ws.label };
+    },
+  );
+}
