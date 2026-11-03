@@ -279,3 +279,78 @@ export default function Portal() {
                 <dd>+{hours(exam.extraTimeMin)} ч для участников с ОВЗ</dd>
               </dl>
             </section>
+
+            {/* F, G, H — сведения для участников */}
+            <Link to="/exam" className="glass card span-4 pt-f link-card entry-accent reveal" style={at(3)} aria-labelledby="tile-f">
+              <div className="link-card-top">
+                <span className="icon-tile tile" aria-hidden="true">
+                  <Icon name="monitor" />
+                </span>
+                <span className="btn-round ne" aria-hidden="true">
+                  <Icon name="arrowRight" />
+                </span>
+              </div>
+              <div className="link-card-body">
+                <h2 id="tile-f" className="h2">
+                  Участник экзамена
+                </h2>
+                <p className="text">
+                  Экзамен проходит только в пункте проведения экзамена (ППЭ) — на рабочем месте, которое подготовил технический специалист.
+                </p>
+                <p className="meta">Вход по коду участника и коду аудитории от организатора</p>
+              </div>
+            </Link>
+
+            <section className="glass card span-4 pt-g reveal" style={at(3)} aria-labelledby="tile-g">
+              <div className="card-head">
+                <h2 id="tile-g" className="h2">
+                  Надёжность
+                </h2>
+                <span className="icon-tile tile" aria-hidden="true">
+                  <Icon name="lock" />
+                </span>
+              </div>
+              <ul className="feature-list">
+                {FEATURES.map((f) => (
+                  <li key={f.title}>
+                    <Icon name="check" />
+                    <b>{f.title}</b>
+                    <span>{f.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="glass card span-4 pt-h reveal" style={at(3)} aria-labelledby="tile-h">
+              <div className="card-head">
+                <h2 id="tile-h" className="h2">
+                  Особые условия
+                </h2>
+                <span className="icon-tile tile" aria-hidden="true">
+                  <Icon name="user" />
+                </span>
+              </div>
+              <p className="tile-text">Для участников с ограниченными возможностями здоровья — по решению администратора:</p>
+              <ul className="chip-list">
+                <li className="chip-tile tile">
+                  +{hours(exam.extraTimeMin)} {hoursWord(exam.extraTimeMin)} к продолжительности
+                </li>
+                <li className="chip-tile tile">Масштаб интерфейса 150 % или 200 %</li>
+                <li className="chip-tile tile">Контрастная тема</li>
+              </ul>
+            </section>
+          </div>
+
+        </main>
+
+        <footer className="portal-foot">
+          <span>
+            ВП ТС ЕГЭ · Математика (профильный уровень) · КИМ {exam.year}
+            {version && `, версия ${version}`}
+          </span>
+          <span>Вопросы в день экзамена — к организатору в аудитории</span>
+        </footer>
+      </div>
+    </div>
+  );
+}
