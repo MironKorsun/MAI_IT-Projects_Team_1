@@ -177,3 +177,105 @@ export default function Portal() {
                 <p className="caption">Ответ — целое число или конечная десятичная дробь. Проверка автоматическая.</p>
               </div>
             </section>
+
+            {/* B, C — вся карточка является ссылкой */}
+            <Link to="/staff/login" className="glass card span-3 min-264 link-card pt-b reveal" style={at(1)} aria-labelledby="tile-b">
+              <div className="link-card-top">
+                <span className="icon-tile tile" aria-hidden="true">
+                  <Icon name="shield" />
+                </span>
+                <span className="btn-round ne" aria-hidden="true">
+                  <Icon name="arrowRight" />
+                </span>
+              </div>
+              <div className="link-card-body">
+                <h2 id="tile-b" className="h2">
+                  Вход для персонала
+                </h2>
+                <p className="text">
+                  <span className="hide-sm">Организаторы в аудиториях, администраторы, Ситуационный центр и аналитики.</span>
+                  <span className="show-sm">Организаторы, администраторы, аналитики</span>
+                </p>
+                <p className="meta">Логин и пароль выдаёт администратор</p>
+              </div>
+            </Link>
+
+            <Link to="/results" className="glass card span-3 min-264 link-card pt-c reveal" style={at(1)} aria-labelledby="tile-c">
+              <div className="link-card-top">
+                <span className="icon-tile tile" aria-hidden="true">
+                  <Icon name="award" />
+                </span>
+                <span className="btn-round ne" aria-hidden="true">
+                  <Icon name="arrowRight" />
+                </span>
+              </div>
+              <div className="link-card-body">
+                <h2 id="tile-c" className="h2">
+                  Мои результаты
+                </h2>
+                <p className="text">
+                  <span className="hide-sm">Тестовый и первичный балл, ответы по каждому заданию, подача апелляции.</span>
+                  <span className="show-sm">Баллы, ответы по заданиям, апелляция</span>
+                </p>
+                <p className="meta">Вход по коду участника и PIN</p>
+              </div>
+            </Link>
+    
+            {/* D — порядок проведения */}
+            <section className="glass card span-8 min-232 pt-d reveal" style={at(2)} aria-labelledby="tile-d">
+              <div className="card-head">
+                <h2 id="tile-d" className="h2">
+                  Как проходит экзамен
+                </h2>
+                <span className="small muted">в аудитории ППЭ</span>
+              </div>
+              <ol className="steps">
+                {STEPS.map((s, i) => (
+                  <li key={s.title}>
+                    <span className="step-num" aria-hidden="true">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <div>
+                      <b>{s.title}</b>
+                      <p>{s.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+  
+            {/* E — расписание из /api/v1/public/overview */}
+            <section className="glass card span-4 min-232 pt-e reveal" style={at(2)} aria-labelledby="tile-e">
+              <div className="card-head">
+                <h2 id="tile-e" className="h2">
+                  Сессия
+                </h2>
+                {session && (
+                  <StatusBadge live={live} className={live ? 'live' : undefined}>
+                    {status.full}
+                  </StatusBadge>
+                )}
+              </div>
+              {loading ? (
+                <Skeleton h={40} w="70%" />
+              ) : session && sessionDay ? (
+                <p className="date-line">
+                  {dayMonth(sessionDay)}
+                  <span className="muted">, {sessionDay.toLocaleDateString('ru-RU', { weekday: 'long' })}</span>
+                </p>
+              ) : (
+                <p className="date-line is-text">{failed ? 'Расписание' : 'На сегодня экзамен не запланирован.'}</p>
+              )}
+              <dl className="kv" style={{ marginTop: 16 }}>
+                {session && (
+                  <>
+                    <dt>Начало экзамена</dt>
+                    <dd>{session.startLocal} по местному времени</dd>
+                  </>
+                )}
+                <dt>Продолжительность</dt>
+                <dd>{fmtMinutes(exam.durationMin)}</dd>
+                <dt>Особые условия</dt>
+                <dd>+{hours(exam.extraTimeMin)} ч для участников с ОВЗ</dd>
+              </dl>
+            </section>
