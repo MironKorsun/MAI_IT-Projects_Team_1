@@ -200,3 +200,199 @@ function LoginScreen({ exam }: { exam: ExamEngine }) {
     await exam.login(code.trim(), access.trim());
     setBusy(false);
   };
+    return (
+    <StepPage exam={exam} w={480}>
+      <form className="glass panel card-lg stack reveal" style={{ '--i': 1, '--gap': '20px' } as React.CSSProperties} onSubmit={submit} noValidate>
+        <div className="stack" style={{ '--gap': '8px' } as React.CSSProperties}>
+          <span className="eyebrow">Шаг 2 из 3</span>
+          <h1 className="h1">Вход участника</h1>
+          <p className="muted small">Введите идентификатор участника и шестизначный код аудитории, который назовёт организатор.</p>
+        </div>
+        <label className="field">
+          <span className="label">Идентификатор участника</span>
+          <input className="input input-xl" value={code} onChange={(e) => setCode(e.target.value)} placeholder="0000-000-0000" autoComplete="off" autoFocus inputMode="numeric" />
+        </label>
+        <label className="field">
+          <span className="label">Код аудитории</span>
+          <input
+            className="input input-xl code-input"
+            value={access}
+            onChange={(e) => setAccess(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="••••••"
+            aria-describedby="code-hint"
+          />
+          <span id="code-hint" className="hint">
+            Код действует до начала экзамена и 15 минут после него.
+          </span>
+        </label>
+        {exam.loginError && (
+          <div className="error-text" role="alert">
+            {exam.loginError}
+          </div>
+        )}
+        <button type="submit" className="btn btn-xl btn-primary btn-block" disabled={busy || !code || access.length !== 6}>
+          {busy && <span className="spinner" />} Войти
+        </button>
+      </form>
+    </StepPage>
+  );
+}
+
+/** ЭФ-03 «Инструктаж» (FR-03): «Начать экзамен» активна только после старта аудитории. */
+function BriefScreen({ exam }: { exam: ExamEngine }) {
+  const s = exam.state!;
+  const started = s.roomStarted;
+  const name = s.participant.displayName;
+  return (
+    <StepPage exam={exam} w={1016}>
+      <div className="brief-grid reveal" style={{ '--i': 1 } as React.CSSProperties}>
+        <section className="glass glass-thick card-xl" aria-labelledby="brief-h">
+          <div className="eyebrow">Шаг 3 из 3 · Инструктаж</div>
+          <h1 id="brief-h" className="h1" style={{ marginTop: 8 }}>
+            Инструкция по выполнению работы
+          </h1>
+          <div className="identity tile">
+            <Icon name="user" size={18} />
+            <span>
+              <span className="strong">{name}</span> <span className="muted">— проверьте, что это ваши данные. Если нет, поднимите руку.</span>
+            </span>
+          </div>
+          <div className="brief-body">
+            <Markdown text={instruction} skipTitle />
+          </div>
+                  </section>
+        <aside className="brief-aside">
+          <section className="glass card stack" style={{ '--gap': '16px' } as React.CSSProperties} aria-labelledby="params-h">
+            <h2 id="params-h" className="h3">
+              Параметры экзамена
+            </h2>
+            <dl className="kv">
+              <dt>Участник</dt>
+              <dd>{name}</dd>
+              <dt>Предмет</dt>
+              <dd>{s.exam.title}</dd>
+              <dt>Продолжительность</dt>
+              <dd>{fmtMinutes(s.exam.durationMin)}</dd>
+              <dt>Заданий</dt>
+              <dd>{s.exam.tasksCount}</dd>
+              <dt>Аудитория</dt>
+              <dd>
+                {s.room.number}, ППЭ {s.room.ppeCode}
+              </dd>
+            </dl>
+            {(s.specialConditions.extraTime || s.specialConditions.scale !== 100 || s.specialConditions.contrast) && (
+              <div className="tile card-tight small stack" style={{ '--gap': '4px' } as React.CSSProperties}>
+                <span className="strong">Особые условия</span>
+                {s.specialConditions.extraTime && <span>+1,5 часа к продолжительности</span>}
+                {s.specialConditions.scale !== 100 && <span>Масштаб интерфейса {s.specialConditions.scale} %</span>}
+                {s.specialConditions.contrast && <span>Контрастная тема</span>}
+              </div>
+            )}
+                      </section>
+          <section className="glass card stack brief-start" style={{ '--gap': '16px' } as React.CSSProperties} aria-live="polite">
+            <div>
+              {started ? (
+                <span className="badge ok">
+                  <Icon name="play" /> Экзамен в аудитории начат
+                </span>
+              ) : (
+                <span className="badge">
+                  <span className="dot live" aria-hidden="true" /> Ожидаем старта от организатора
+                </span>
+              )}
+            </div>
+            <p className="muted" style={{ fontSize: 14, lineHeight: '20px' }}>
+              {started
+                ? 'Нажмите «Начать экзамен». Отсчёт времени начнётся после загрузки вашего варианта.'
+                : 'Кнопка станет активной, когда организатор начнёт экзамен в аудитории. Ничего нажимать не нужно.'}
+            </p>
+            {started ? (
+              <button type="button" className="btn btn-xl btn-brand btn-block" onClick={() => void exam.begin()}>
+                Начать экзамен <Icon name="arrowRight" />
+              </button>
+            ) : (
+              <button type="button" className="btn btn-xl btn-block" disabled>
+                Начать экзамен
+              </button>
+            )}
+          </section>
+        </aside>
+      </div>
+    </StepPage>
+  );
+}
+
+function LoadingScreen({ exam }: { exam: ExamEngine }) {
+  return (
+    <main className="page-narrow screen-center" style={CENTER}>
+      <div className="glass panel card-xl stack reveal" style={{ '--gap': '16px', alignItems: 'center', textAlign: 'center' } as React.CSSProperties} role="status" aria-live="polite">
+        <div className="spinner" style={{ width: 28, height: 28 }} />
+        <h1 className="h2">Подготовка варианта</h1>
+        <p className="muted">{exam.loadingStep || 'Расшифровываем задания на этом компьютере…'}</p>
+      </div>
+    </main>
+  );
+}
+
+/** ЭФ-06 «Окончание попытки» (FR-16, FR-17, FR-27, FR-28). Экран без анимаций (.calm). */
+function FinalScreen({ exam }: { exam: ExamEngine }) {
+  const s = exam.state;
+  const st = s?.state ?? 'finished';
+  const title =
+    st === 'finished' ? 'Экзамен завершён' : st === 'timeExpired' ? 'Время экзамена истекло' : st === 'removed' ? 'Экзамен прекращён' : 'Экзамен завершён досрочно';
+  const ok = st === 'finished' || st === 'timeExpired';
+  return (
+    <main className="page-narrow screen-center calm" style={CENTER}>
+      <section className="glass panel card-xl stack" style={{ '--gap': '16px', textAlign: 'center' } as React.CSSProperties} role="status">
+        <span className={`final-icon${ok ? ' ok' : ''}`} aria-hidden="true">
+          <Icon name={ok ? 'checkCircle' : 'info'} size={28} />
+        </span>
+        <h1 className="h1">{title}</h1>
+        <p className="muted">
+          {s?.terminationMessage ??
+            (st === 'timeExpired' ? 'Ответы, сохранённые до окончания времени, переданы на проверку.' : 'Ваши ответы сохранены и переданы на проверку. Изменить их больше нельзя.')}
+        </p>
+        <dl className="kv kv-center">
+          <dt>Статус</dt>
+          <dd>{ATTEMPT_STATE_LABEL[st]}</dd>
+          {s?.finishedAt && (
+            <>
+              <dt>Время завершения</dt>
+              <dd className="num">{fmtTime(s.finishedAt, undefined, true)}</dd>
+            </>
+          )}
+          {s && (
+            <>
+              <dt>Отвечено заданий</dt>
+              <dd>
+                {Object.values(s.answers).filter((a) => a.value.trim()).length} из {s.exam.tasksCount}
+              </dd>
+            </>
+          )}
+        </dl>
+        <p className="small muted">Дождитесь указаний организатора. Результаты появятся в разделе «Мои результаты» после официальной публикации.</p>
+      </section>
+    </main>
+  );
+}
+
+/** Сбой рабочего места: без анимаций (.calm). */
+function Fatal({ text }: { text?: string }) {
+  return (
+    <main className="page-narrow screen-center calm" style={CENTER}>
+      <div className="seat-head">
+        <Brand />
+      </div>
+      <section className="glass panel card-xl stack" style={{ '--gap': '16px', textAlign: 'center' } as React.CSSProperties} role="alert">
+        <span className="final-icon" style={{ background: 'var(--bad-soft)', color: 'var(--bad)' }} aria-hidden="true">
+          <Icon name="alert" size={28} />
+        </span>
+        <h1 className="h2">Работа на этом месте невозможна</h1>
+        <p className="muted">{text}</p>
+        <p className="small muted">Поднимите руку — организатор поможет перейти на другое рабочее место.</p>
+      </section>
+    </main>
+  );
+}
