@@ -319,3 +319,71 @@ async function insert(client: pg.PoolClient, table: string, cols: readonly strin
     await client.query(`INSERT INTO ${table} (${cols.map(q).join(', ')}) VALUES ${values} ${conflict}`, params);
   }
 }
+
+async function write(c: Changes) {
+  const client = await pool!.connect();
+  try {
+    await client.query('BEGIN');
+    for (const spec of TABLES) {
+      const ups = c.upserts.filter((u) => u.spec === spec);
+      if (!ups.length) continue;
+      const cols = spec.cols.map(([, column]) => column);
+      const update = cols.filter((x) => !spec.pk.includes(x)).map((x) => `${q(x)} = EXCLUDED.${q(x)}`).join(', ');
+      await insert(client, spec.table, cols, ups.map((u) => u.row), `ON CONFLICT (${spec.pk.map(q).join(', ')}) DO UPDATE SET ${update}`);
+    }
+    for (const d of c.deletes) {
+      const spec = d.spec;
+      const parts = spec.pk.length === 1 ? [d.key] : d.key.split('|');
+      await client.query(`DELETE FROM ${spec.table} WHERE ${spec.pk.map((p, i) => `${q(p)} = $${i + 1}`).join(' AND ')}`, parts);
+    }
+    if (c.answers.length) await insert(client, 'answer_versions', ANSWER_COLS, c.answers.map((a) => a.row), 'ON CONFLICT DO NOTHING');
+    if (c.audit.length) await insert(client, 'audit_events', AUDIT_COLS.map(([, column]) => column), c.audit.map((a) => a.row), 'ON CONFLICT DO NOTHING');
+    if (c.telemetry.length) await insert(client, 'telemetry', TELEMETRY_COLS, c.telemetry, '');
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+let chain: Promise<void> = Promise.resolve();
+
+/**
+ * Фиксация всех изменений рабочего набора. Вызовы выстраиваются в очередь, каждая транзакция
+ * содержит согласованный снимок изменений на момент вызова.
+ */
+export function commit(data: Database): Promise<void> {
+  if (!pool) return Promise.resolve();
+  const c = collect(data);
+  if (!c.upserts.length && !c.deletes.length && !c.answers.length && !c.audit.length && !c.telemetry.length) return chain;
+  const run = chain.then(() =>
+    write(c).catch((e) => {
+      revert(c);
+      throw e;
+    }),
+  );
+  chain = run.catch(() => undefined);
+  return run;
+}
+
+/** Проверка доступности БД для /health/ready. */
+export async function ping() {
+  if (!pool) return true;
+  await pool.query('SELECT 1');
+  return true;
+}
+
+export async function isEmpty() {
+  const { rows } = await pool!.query<{ n: number }>('SELECT (SELECT count(*) FROM staff_users)::int AS n');
+  return rows[0].n === 0;
+}
+
+/** Состав столбцов модели — для проверки соответствия миграциям в тесте. */
+export function expectedColumns() {
+  const m = new Map<string, string[]>(TABLES.map((s) => [s.table, s.cols.map(([, column]) => column)]));
+  m.set('audit_events', AUDIT_COLS.map(([, column]) => column));
+  m.set('answer_versions', [...ANSWER_COLS]);
+  return m;
+}
