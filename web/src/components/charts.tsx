@@ -95,3 +95,63 @@ function useGrow(extraMs = 0) {
   }, [still]);
   return { grown, animating };
 }
+
+function Swatch({ color }: { color: string }) {
+  return <span aria-hidden="true" style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 4, background: color, flex: 'none' }} />;
+}
+
+export interface Bar {
+  label: string;
+  value: number;
+  tip?: ReactNode;
+  /** true — не ниже порога (мятный), false — ниже порога; если задан хотя бы у одного столбца, показывается легенда. */
+  highlight?: boolean;
+}
+
+export function Columns({ data, height = 220, unit = '', ariaLabel, marker }: { data: Bar[]; height?: number; unit?: string; ariaLabel: string; marker?: { at: number; label: string } }) {
+  const [ref, width] = useWidth<HTMLDivElement>();
+  const pal = usePalette();
+  const { grown, animating } = useGrow();
+  const [hover, setHover] = useState<number>();
+  const pad = { l: 34, r: 8, t: 14, b: 28 };
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const niceMax = Math.ceil(max / 5) * 5 || 5;
+  const iw = width - pad.l - pad.r;
+  const ih = height - pad.t - pad.b;
+  const slot = iw / Math.max(1, data.length);
+  const bw = Math.max(4, Math.min(56, slot - 6));
+  const ticks = [0, 0.5, 1].map((k) => Math.round(niceMax * k));
+  const y = (v: number) => pad.t + ih - (v / niceMax) * ih;
+  const legend = data.some((d) => d.highlight !== undefined);
+    return (
+    <div>
+      {legend && (
+        <div className="small muted" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginBottom: 8 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Swatch color={pal.pass} />
+            не ниже порога
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Swatch color={pal.series} />
+            ниже порога
+          </span>
+        </div>
+      )}
+            <div ref={ref} style={{ position: 'relative' }}>
+        <svg width={width} height={height} role="img" aria-label={ariaLabel} onMouseLeave={() => setHover(undefined)}>
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={pad.l} x2={width - pad.r} y1={y(t)} y2={y(t)} stroke={pal.grid} />
+              <text x={pad.l - 8} y={y(t) + 4} textAnchor="end" fontSize="12" fill={pal.tick} style={NUM}>
+                {t}
+              </text>
+            </g>
+          ))}
+          {marker && (
+            <g>
+              <line x1={pad.l + marker.at * slot} x2={pad.l + marker.at * slot} y1={pad.t - 6} y2={pad.t + ih} stroke={pal.marker} strokeDasharray="3 4" strokeOpacity=".35" />
+              <text x={pad.l + marker.at * slot + 6} y={pad.t + 4} fontSize="12" fill={pal.markerLabel} style={NUM}>
+                {marker.label}
+              </text>
+            </g>
+          )}
