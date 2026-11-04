@@ -157,3 +157,165 @@ export async function disconnect() {
   await pool?.end();
   pool = undefined;
 }
+
+/** Применение миграций из server/migrations по порядку имён (под рекомендательной блокировкой). */
+export async function migrate(dir = config.migrationsDir) {
+  const client = await pool!.connect();
+  try {
+    await client.query('SELECT pg_advisory_lock(727001)');
+    await client.query('CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
+    const done = new Set((await client.query<{ version: string }>('SELECT version FROM schema_migrations')).rows.map((r) => r.version));
+    const applied: string[] = [];
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
+      if (done.has(file)) continue;
+      await client.query('BEGIN');
+      try {
+        await client.query(readFileSync(resolve(dir, file), 'utf8'));
+        await client.query('INSERT INTO schema_migrations (version) VALUES ($1)', [file]);
+        await client.query('COMMIT');
+        applied.push(file);
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw new Error(`Миграция ${file}: ${(e as Error).message}`);
+      }
+    }
+    return applied;
+  } finally {
+    await client.query('SELECT pg_advisory_unlock(727001)').catch(() => undefined);
+    client.release();
+  }
+}
+
+// ---------- последнее записанное состояние ----------
+const snapshot = new Map<string, Map<string, string>>();
+const savedAnswers = new Set<string>();
+const savedAudit = new Set<string>();
+let savedTelemetry = 0;
+
+function rowOf(spec: TableSpec, o: any) {
+  return spec.cols.map(([prop, , kind]) => toDb(o[prop], kind));
+}
+
+/** Чтение всех данных из БД в рабочий набор. */
+export async function load(): Promise<Partial<Database>> {
+  const out: Partial<Database> = {};
+  snapshot.clear();
+  savedAnswers.clear();
+  savedAudit.clear();
+  for (const spec of TABLES) {
+    const { rows } = await pool!.query(`SELECT * FROM ${spec.table} ORDER BY row_no`);
+    const list = rows.map((r) => fromRow(r, spec.cols));
+    const snap = new Map<string, string>();
+    for (const o of list) snap.set(spec.key(o), JSON.stringify(rowOf(spec, o)));
+    snapshot.set(spec.table, snap);
+    (out as Record<string, unknown>)[spec.collection] = list;
+  }
+  const attempts = (out.attempts ?? []) as Attempt[];
+  const byAttempt = new Map(attempts.map((a) => [a.id, a]));
+  for (const a of attempts) {
+    a.answers = {};
+    a.answerHistory = {};
+  }
+  const { rows: versions } = await pool!.query('SELECT * FROM answer_versions ORDER BY attempt_id, task_id, version');
+  for (const r of versions) {
+    const a = byAttempt.get(r.attempt_id);
+    if (!a) continue;
+    const v: AnswerVersion = { kind: r.kind, value: r.value, version: r.version, seq: r.seq, savedAt: r.saved_at, changedAtServerClock: r.changed_at_server_clock };
+    if (r.late) v.late = true;
+    (a.answerHistory[r.task_id] ??= []).push(v);
+    a.answers[r.task_id] = v;
+    savedAnswers.add(`${r.attempt_id}|${r.task_id}|${r.version}`);
+  }
+  const { rows: audit } = await pool!.query('SELECT * FROM audit_events ORDER BY row_no');
+  out.audit = audit.map((r) => fromRow(r, AUDIT_COLS)) as unknown as Database['audit'];
+  for (const e of out.audit) savedAudit.add(e.id);
+  const { rows: tel } = await pool!.query('SELECT at, size, kind FROM telemetry ORDER BY row_no');
+  out.telemetry = tel;
+  savedTelemetry = tel.length;
+  return out;
+}
+
+interface Upsert { spec: TableSpec; key: string; row: unknown[]; prev?: string }
+interface Changes {
+  upserts: Upsert[];
+  deletes: { spec: TableSpec; key: string; prev: string }[];
+  answers: { key: string; row: unknown[] }[];
+  audit: { id: string; row: unknown[] }[];
+  telemetry: unknown[][];
+  telemetryFrom: number;
+}
+
+/** Синхронное вычисление изменений относительно записанного состояния. */
+function collect(data: Database): Changes {
+  const c: Changes = { upserts: [], deletes: [], answers: [], audit: [], telemetry: [], telemetryFrom: savedTelemetry };
+  for (const spec of TABLES) {
+    const snap = snapshot.get(spec.table) ?? new Map<string, string>();
+    snapshot.set(spec.table, snap);
+    const seen = new Set<string>();
+    for (const o of data[spec.collection] as unknown[]) {
+      const key = spec.key(o);
+      seen.add(key);
+      const row = rowOf(spec, o);
+      const json = JSON.stringify(row);
+      const prev = snap.get(key);
+      if (prev !== json) {
+        c.upserts.push({ spec, key, row, prev });
+        snap.set(key, json);
+      }
+    }
+    for (const [key, prev] of snap) {
+      if (!seen.has(key)) {
+        c.deletes.push({ spec, key, prev });
+        snap.delete(key);
+      }
+    }
+  }
+  for (const a of data.attempts) {
+    for (const [taskId, list] of Object.entries(a.answerHistory)) for (const v of list) addAnswer(c, a.id, taskId, v);
+    for (const [taskId, v] of Object.entries(a.answers)) addAnswer(c, a.id, taskId, v);
+  }
+  for (const e of data.audit) {
+    if (savedAudit.has(e.id)) continue;
+    savedAudit.add(e.id);
+    c.audit.push({ id: e.id, row: AUDIT_COLS.map(([prop, , kind]) => toDb((e as unknown as Record<string, unknown>)[prop], kind)) });
+  }
+  for (let i = savedTelemetry; i < data.telemetry.length; i++) {
+    const x = data.telemetry[i];
+    c.telemetry.push([x.at, x.size, x.kind]);
+  }
+  savedTelemetry = data.telemetry.length;
+  return c;
+}
+
+function addAnswer(c: Changes, attemptId: string, taskId: string, v: AnswerVersion) {
+  const key = `${attemptId}|${taskId}|${v.version}`;
+  if (savedAnswers.has(key)) return;
+  savedAnswers.add(key);
+  c.answers.push({ key, row: [attemptId, taskId, v.version, v.seq, v.kind, v.value, v.savedAt, v.changedAtServerClock, v.late ?? null] });
+}
+
+/** Откат «записанного состояния», если транзакция не прошла: следующая запись повторит изменения. */
+function revert(c: Changes) {
+  for (const u of c.upserts) {
+    const snap = snapshot.get(u.spec.table)!;
+    if (u.prev === undefined) snap.delete(u.key);
+    else snap.set(u.key, u.prev);
+  }
+  for (const d of c.deletes) snapshot.get(d.spec.table)!.set(d.key, d.prev);
+  for (const a of c.answers) savedAnswers.delete(a.key);
+  for (const e of c.audit) savedAudit.delete(e.id);
+  savedTelemetry = Math.min(savedTelemetry, c.telemetryFrom);
+}
+
+const CHUNK = 400;
+
+async function insert(client: pg.PoolClient, table: string, cols: readonly string[], rows: unknown[][], conflict: string) {
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const part = rows.slice(i, i + CHUNK);
+    const params: unknown[] = [];
+    const values = part
+      .map((r) => `(${r.map((v) => (params.push(v), `$${params.length}`)).join(', ')})`)
+      .join(', ');
+    await client.query(`INSERT INTO ${table} (${cols.map(q).join(', ')}) VALUES ${values} ${conflict}`, params);
+  }
+}
