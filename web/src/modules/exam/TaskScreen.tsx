@@ -379,3 +379,178 @@ function TaskCard({
           />
         )}
       </div>
+            <div className="task-nav">
+        <button type="button" className="btn btn-xl" onClick={onPrev} disabled={index === 0} aria-keyshortcuts="Alt+ArrowLeft">
+          <Icon name="arrowLeft" /> Предыдущее
+        </button>
+        <span className="keys">Alt + ← / → — переход между заданиями</span>
+        {last ? (
+          <button type="button" className="btn btn-xl btn-primary" onClick={onFinish}>
+            К завершению <Icon name="arrowRight" />
+          </button>
+        ) : (
+          <button type="button" className="btn btn-xl btn-primary" onClick={onNext} aria-keyshortcuts="Alt+ArrowRight">
+            Следующее <Icon name="arrowRight" />
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/**
+ * Фокус на заголовок нового задания (или сводки) и, если он вне экрана, мгновенная прокрутка к нему —
+ * без плавной прокрутки: на экране М1 движения нет (ТЗ КЧ 6.6).
+ */
+function revealHeading(h: HTMLElement | null) {
+  if (!h) return;
+  h.focus({ preventScroll: true });
+  const top = h.getBoundingClientRect().top;
+  if (top < 0 || top > window.innerHeight - 80) h.closest('.task-card')?.scrollIntoView({ block: 'start' });
+}
+
+/** Краткий ответ: недопустимые символы не вводятся, пример формата под полем (FR-07). */
+function ShortAnswer({ task, exam }: { task: TaskView; exam: ExamEngine }) {
+  const format = task.format ?? 'decimal';
+  const value = exam.answers[task.id] ?? '';
+  // «Ответ сохранён» — когда ответ есть на сервере и очередь пуста; без связи состояние показывает верхняя панель
+  const saved = !!value.trim() && exam.online && !exam.dirtyIds.includes(task.id);
+  return (
+    <div className="field">
+      <label className="label" htmlFor={`ans-${task.id}`}>
+        Ответ
+      </label>
+      <div className="answer-row">
+        <input
+          id={`ans-${task.id}`}
+          className="input-answer"
+          value={value}
+          inputMode={format === 'word' ? 'text' : 'decimal'}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(e) => exam.setAnswer(task.id, 'short', filterShortInput(format, e.target.value))}
+          onBlur={() => void exam.flush()}
+          aria-describedby={`fmt-${task.id}`}
+        />
+        {saved && (
+          <span className="saved">
+            <Icon name="check" /> Ответ сохранён
+          </span>
+        )}
+      </div>
+      <span id={`fmt-${task.id}`} className="hint">
+        {format === 'decimal' ? DECIMAL_HINT : (task.formatHint ?? FORMAT_HINT[format])}
+      </span>
+    </div>
+  );
+}
+
+/** ЭФ-05 «Сводка перед завершением» с двухшаговым подтверждением (FR-16). */
+function Summary({ exam, onBack, onOpen }: { exam: ExamEngine; onBack: () => void; onOpen: (id: string) => void }) {
+  const tasks = exam.variant!.tasks;
+  const hasAnswer = (id: string) => !!(exam.answers[id] ?? '').trim();
+  const empty = tasks.filter((t) => !hasAnswer(t.id));
+  const flagged = tasks.filter((t) => exam.flags.includes(t.id));
+  const [step, setStep] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => revealHeading(headingRef.current), []);
+  const finish = async () => {
+    if (step === 1) return setStep(2);
+    setBusy(true);
+    setFailed(false);
+    const ok = await exam.finish();
+    if (!ok) setFailed(true);
+    setBusy(false);
+  };
+    return (
+    <section className="glass glass-thick task-card stack" style={{ '--gap': '24px' } as React.CSSProperties} aria-labelledby="sum-h">
+      <div className="stack" style={{ '--gap': '8px' } as React.CSSProperties}>
+        <span className="eyebrow">Завершение</span>
+        <h1 id="sum-h" ref={headingRef} tabIndex={-1} className="h-exam" style={{ outline: 'none' }}>
+          Проверьте ответы перед завершением
+        </h1>
+        <p className="muted">
+          Отвечено {tasks.length - empty.length} из {tasks.length}. После подтверждения изменить ответы будет нельзя.
+        </p>
+      </div>
+            <div className="summary-grid">
+        <div className="tile card-tight stack" style={{ '--gap': '12px' } as React.CSSProperties}>
+          <div className="h3">Без ответа · {empty.length}</div>
+          {empty.length ? (
+            <div className="cell-row">
+              {empty.map((t) => (
+                <button key={t.id} type="button" className="task-cell" onClick={() => onOpen(t.id)} aria-label={`Перейти к заданию ${t.number}`}>
+                  {t.number}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="small muted">Все задания с ответами.</span>
+          )}
+        </div>
+                <div className="tile card-tight stack" style={{ '--gap': '12px' } as React.CSSProperties}>
+          <div className="h3">Отмечено · {flagged.length}</div>
+          {flagged.length ? (
+            <div className="cell-row">
+              {flagged.map((t) => {
+                const has = hasAnswer(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`task-cell${has ? ' has' : ''}`}
+                    onClick={() => onOpen(t.id)}
+                    aria-label={`Перейти к заданию ${t.number}: ${has ? 'ответ сохранён' : 'нет ответа'}`}
+                  >
+                    {t.number}
+                    {has && <Icon name="check" size={12} className="tick" />}
+                    <span className="task-flag" aria-hidden="true">
+                      <Icon name="flag" size={10} />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <span className="small muted">Нет отмеченных заданий.</span>
+          )}
+        </div>
+              </div>
+      {!exam.online && (
+        <div className="notice warn" role="alert">
+          <span className="notice-body">
+            <Icon name="wifiOff" className="lead-icon" size={20} />
+            <span>Завершение недоступно, пока нет связи с сервером. Ответы сохраняются на этом компьютере.</span>
+          </span>
+        </div>
+      )}
+      {step === 2 && (
+        <div className="notice warn" role="alert">
+          <span className="notice-body">
+            <Icon name="alert" className="lead-icon" size={20} />
+            <span>Подтвердите ещё раз: после завершения вернуться к заданиям нельзя.</span>
+          </span>
+        </div>
+      )}
+      {failed && (
+        <div className="notice warn" role="alert">
+          <span className="notice-body">
+            <Icon name="alert" className="lead-icon" size={20} />
+            <span>Не удалось завершить — изменения ещё отправляются. Повторите через несколько секунд.</span>
+          </span>
+        </div>
+      )}
+      <div className="summary-foot">
+        <button type="button" className="btn btn-xl" onClick={onBack}>
+          <Icon name="arrowLeft" /> Вернуться к заданиям
+        </button>
+        <button type="button" className="btn btn-xl btn-primary" onClick={finish} disabled={busy || !exam.online}>
+          {busy && <span className="spinner" />}
+          {step === 1 ? 'Завершить экзамен' : 'Да, завершить окончательно'}
+        </button>
+      </div>
+    </section>
+  );
+}
