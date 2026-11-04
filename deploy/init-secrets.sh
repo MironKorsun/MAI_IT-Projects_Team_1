@@ -16,8 +16,8 @@ gen admin_password "printf %s $(rand 20)"
 if [ ! -f secrets/tls/server.crt ]; then
     MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=$CN" \
     -addext "subjectAltName=DNS:$CN,DNS:localhost,IP:127.0.0.1" \
-    -keyout secrets/tls/server.key -out secrets/tls/server.crt 2
-  chmod 644 secrets/tls/server.crt secrets/tls/server.key 2>/dev/null
+    -keyout secrets/tls/server.key -out secrets/tls/server.crt 2>/dev/null
+  chmod 644 secrets/tls/server.crt secrets/tls/server.key
   echo "создан самоподписанный сертификат secrets/tls/server.crt (для стенда; в эксплуатации — сертификат УЦ)"
 fi
 echo "Пароль первичного администратора: deploy/secrets/admin_password"
