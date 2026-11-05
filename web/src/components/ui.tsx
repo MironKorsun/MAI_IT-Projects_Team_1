@@ -87,7 +87,7 @@ export function Modal({
   wide?: boolean;
   footer?: ReactNode;
   labelledBy?: string;
-  }) {
+}) {
   const ref = useRef<HTMLDivElement>(null);
   // Элемент, с которого открыли окно, — запоминается до autoFocus полей внутри окна
   const [opener] = useState(() => document.activeElement as HTMLElement | null);
@@ -119,7 +119,7 @@ export function Modal({
       document.removeEventListener('keydown', onKey);
       if (opener?.isConnected) opener.focus?.();
     };
-      }, [opener]);
+  }, [opener]);
   return (
     <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && close.current?.()}>
       <div ref={ref} className={`dialog${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={labelledBy} tabIndex={-1}>
@@ -157,7 +157,7 @@ export function Confirm({
   onConfirm: () => Promise<unknown> | void;
   onClose: () => void;
   secondStep?: boolean;
-  }) {
+}) {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>();
@@ -174,7 +174,7 @@ export function Confirm({
       setBusy(false);
     }
   };
-    return (
+  return (
     <Modal
       title={title}
       onClose={onClose}
@@ -353,4 +353,3 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   }, [reload]);
   return { data, error, loading, reload, setData };
 }
-

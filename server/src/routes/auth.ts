@@ -37,7 +37,6 @@ export default async function authRoutes(app: FastifyInstance) {
         },
       },
     },
-
     async (req, reply) => {
       const { participantCode, accessCode, workstationSecret } = req.body;
       const ws = db.workstations.find((w) => w.secret === workstationSecret);

@@ -1,4 +1,3 @@
-import '@fastify/cookie'
 import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { SignJWT, jwtVerify, generateKeyPair, type CryptoKey } from 'jose';
 import type { FastifyReply, FastifyRequest } from 'fastify';

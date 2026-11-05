@@ -189,7 +189,7 @@ export default function AuditLog() {
                 </tbody>
               </table>
             </div>
-            )}
+          )}
           {data && data.items.length > 0 && (
             <div className="panel-foot row between wrap">
               <span className="num">

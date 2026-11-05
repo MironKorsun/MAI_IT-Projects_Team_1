@@ -60,7 +60,7 @@ export default function RoomPage() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<SeatStatus | ''>('');
 
-   // Канал событий; при недоступности — опрос не чаще 1 раза в 15 с (FR-25)
+  // Канал событий; при недоступности — опрос не чаще 1 раза в 15 с (FR-25)
   useEffect(() => {
     if (!id) return;
     const ch = new EventChannel(staffApi, {
@@ -222,7 +222,7 @@ export default function RoomPage() {
               )}
             </section>
           </>
-          ) : (
+        ) : (
           <>
             <Stat className="span-4" label="Выполняют" value={String(stats.inProgress)} sub={`начало в ${fmtTime(room.startedAt, room.ppe.tz)}`} />
             <Stat className="span-4" label="Завершили" value={`${stats.finished} / ${stats.total}`} progress={stats.total ? stats.finished / stats.total : 0} />
@@ -316,7 +316,7 @@ export default function RoomPage() {
                           ) : (
                             <span className="small muted">не выполнялась</span>
                           )}
-                          </td>
+                        </td>
                         <td className="nowrap">
                           {p ? (
                             <div className="row" style={{ '--gap': '6px' } as React.CSSProperties}>
@@ -350,7 +350,7 @@ export default function RoomPage() {
                           </td>
                         )}
                       </tr>
- );
+                    );
                   })}
                   {!rows.length && (
                     <tr>
@@ -519,7 +519,7 @@ function SeatMenu({ seat, onPick, started }: { seat: SeatDto; onPick: (k: SeatKi
     onPick(k);
   };
 
-   return (
+  return (
     <>
       <button ref={btn} type="button" className="btn btn-sm" aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined} onClick={() => setOpen((v) => !v)}>
         Действия <Icon name="chevronDown" />
@@ -624,7 +624,7 @@ function SeatAction({ action, room, dicts, onClose, onDone }: { action: { kind: 
         await map.run();
         onDone(map.ok);
       }}
-      >
+    >
       <p className="muted small">Участник: {who}</p>
       {action.kind === 'compensate' && (
         <label className="field">
@@ -649,7 +649,7 @@ function SeatAction({ action, room, dicts, onClose, onDone }: { action: { kind: 
             </span>
           )}
         </label>
-         )}
+      )}
       {action.kind !== 'relocate' && (
         <label className="field">
           <span className="label">{action.kind === 'incident' ? 'Тип нарушения' : 'Причина'}</span>
@@ -706,7 +706,7 @@ function ConfirmWithValidation({
   onClose: () => void;
   onConfirm: () => Promise<void>;
   children: React.ReactNode;
-  }) {
+}) {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>();
@@ -740,7 +740,7 @@ function ConfirmWithValidation({
             {second && step === 1 ? 'Продолжить' : label}
           </button>
         </>
-           }
+      }
     >
       {children}
       {step === 2 && (

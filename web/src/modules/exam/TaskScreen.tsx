@@ -43,7 +43,7 @@ export function TaskScreen({ exam }: { exam: ExamEngine }) {
     }
   };
 
-    const go = (i: number) => {
+  const go = (i: number) => {
     const t = tasks[Math.max(0, Math.min(tasks.length - 1, i))];
     if (t && t.id !== exam.currentId) exam.select(t.id);
   };
@@ -65,7 +65,8 @@ export function TaskScreen({ exam }: { exam: ExamEngine }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
-    return (
+
+  return (
     <div className="exam calm">
       <ExamTopBar exam={exam} onRefs={() => setRefsOpen(true)} onMsgs={openMsgs} unread={Math.max(0, exam.messages.length - seen)} hasRefs={v.references.length > 0} />
       <div className="exam-body">
@@ -79,7 +80,7 @@ export function TaskScreen({ exam }: { exam: ExamEngine }) {
           <div className="progress" aria-hidden="true">
             <i style={{ width: `${(answered / tasks.length) * 100}%` }} />
           </div>
-                    <ul className="task-grid" role="list">
+          <ul className="task-grid" role="list">
             {tasks.map((t) => {
               const has = !!(exam.answers[t.id] ?? '').trim();
               const flagged = exam.flags.includes(t.id);
@@ -109,7 +110,7 @@ export function TaskScreen({ exam }: { exam: ExamEngine }) {
                 </li>
               );
             })}
-                      </ul>
+          </ul>
           <div className="legend">
             <span>
               <span className="task-cell mini" aria-hidden="true" /> нет ответа
@@ -127,8 +128,8 @@ export function TaskScreen({ exam }: { exam: ExamEngine }) {
             </button>
           </div>
         </nav>
-        
-                <main className="exam-main" id="main">
+
+        <main className="exam-main" id="main">
           <ExamNotices exam={exam} />
           {summary ? (
             <Summary
@@ -154,7 +155,7 @@ export function TaskScreen({ exam }: { exam: ExamEngine }) {
         </main>
       </div>
 
-            {refsOpen && (
+      {refsOpen && (
         <Modal title="Справочные материалы" onClose={() => setRefsOpen(false)} wide>
           <div className="stack" style={{ '--gap': '12px' } as React.CSSProperties} data-kim>
             {v.references.map((r) => (
@@ -179,8 +180,7 @@ export function TaskScreen({ exam }: { exam: ExamEngine }) {
             ))}
           </div>
         </Modal>
-
-              )}
+      )}
       {msgsOpen && (
         <Modal title="Сообщения организатора" onClose={() => setMsgsOpen(false)}>
           {exam.messages.length ? (
@@ -217,8 +217,7 @@ function ExamTopBar({ exam, onRefs, onMsgs, unread, hasRefs }: { exam: ExamEngin
       }
     }
   }, [ms]);
-
-    return (
+  return (
     <header className="glass-float exam-top">
       {/* знак отдельно от .who: правило `.who span` не должно задевать плитку знака */}
       <div className="row" style={{ minWidth: 0 }}>
@@ -354,7 +353,8 @@ function TaskCard({
           <Icon name="flag" /> {flagged ? 'Отмечено для возврата' : 'Отметить для возврата'}
         </button>
       </div>
-            <div className="kim-text no-select" data-kim>
+
+      <div className="kim-text no-select" data-kim>
         <SafeHtml html={task.condition} />
       </div>
 
@@ -379,7 +379,8 @@ function TaskCard({
           />
         )}
       </div>
-            <div className="task-nav">
+
+      <div className="task-nav">
         <button type="button" className="btn btn-xl" onClick={onPrev} disabled={index === 0} aria-keyshortcuts="Alt+ArrowLeft">
           <Icon name="arrowLeft" /> Предыдущее
         </button>
@@ -464,7 +465,7 @@ function Summary({ exam, onBack, onOpen }: { exam: ExamEngine; onBack: () => voi
     if (!ok) setFailed(true);
     setBusy(false);
   };
-    return (
+  return (
     <section className="glass glass-thick task-card stack" style={{ '--gap': '24px' } as React.CSSProperties} aria-labelledby="sum-h">
       <div className="stack" style={{ '--gap': '8px' } as React.CSSProperties}>
         <span className="eyebrow">Завершение</span>
@@ -475,7 +476,7 @@ function Summary({ exam, onBack, onOpen }: { exam: ExamEngine; onBack: () => voi
           Отвечено {tasks.length - empty.length} из {tasks.length}. После подтверждения изменить ответы будет нельзя.
         </p>
       </div>
-            <div className="summary-grid">
+      <div className="summary-grid">
         <div className="tile card-tight stack" style={{ '--gap': '12px' } as React.CSSProperties}>
           <div className="h3">Без ответа · {empty.length}</div>
           {empty.length ? (
@@ -490,7 +491,7 @@ function Summary({ exam, onBack, onOpen }: { exam: ExamEngine; onBack: () => voi
             <span className="small muted">Все задания с ответами.</span>
           )}
         </div>
-                <div className="tile card-tight stack" style={{ '--gap': '12px' } as React.CSSProperties}>
+        <div className="tile card-tight stack" style={{ '--gap': '12px' } as React.CSSProperties}>
           <div className="h3">Отмечено · {flagged.length}</div>
           {flagged.length ? (
             <div className="cell-row">
@@ -517,7 +518,7 @@ function Summary({ exam, onBack, onOpen }: { exam: ExamEngine; onBack: () => voi
             <span className="small muted">Нет отмеченных заданий.</span>
           )}
         </div>
-              </div>
+      </div>
       {!exam.online && (
         <div className="notice warn" role="alert">
           <span className="notice-body">

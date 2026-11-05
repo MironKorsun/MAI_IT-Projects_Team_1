@@ -42,7 +42,7 @@ export default function RoomsList() {
           <Empty icon="users">Вам не назначены аудитории на текущие сессии.</Empty>
         </div>
       )}
-{data && data.length > 0 && (
+      {data && data.length > 0 && (
         <div className="bento reveal" style={{ '--i': 1 } as React.CSSProperties}>
           {data.map((r) => (
             <Link key={r.id} to={`/staff/rooms/${r.id}`} className="glass card span-4" style={{ display: 'flex', flexDirection: 'column', gap: 16, minHeight: 200 }}>

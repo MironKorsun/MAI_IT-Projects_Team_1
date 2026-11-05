@@ -1,0 +1,116 @@
+{
+  "subject": "math-profile",
+  "year": 2026,
+  "durationMin": 235,
+  "maxPrimaryScore": 12,
+  "positions": [
+    {
+      "number": 1,
+      "part": 1,
+      "type": "short",
+      "topic": "5.1",
+      "difficulty": "basic",
+      "maxScore": 1,
+      "title": "Планиметрия"
+    },
+    {
+      "number": 2,
+      "part": 1,
+      "type": "short",
+      "topic": "5.6",
+      "difficulty": "basic",
+      "maxScore": 1,
+      "title": "Векторы"
+    },
+    {
+      "number": 3,
+      "part": 1,
+      "type": "short",
+      "topic": "5.4",
+      "difficulty": "basic",
+      "maxScore": 1,
+      "title": "Стереометрия"
+    },
+    {
+      "number": 4,
+      "part": 1,
+      "type": "short",
+      "topic": "6.3",
+      "difficulty": "basic",
+      "maxScore": 1,
+      "title": "Начала теории вероятностей"
+    },
+    {
+      "number": 5,
+      "part": 1,
+      "type": "short",
+      "topic": "6.3",
+      "difficulty": "advanced",
+      "maxScore": 1,
+      "title": "Вероятности сложных событий"
+    },
+    {
+      "number": 6,
+      "part": 1,
+      "type": "short",
+      "topic": "2.1",
+      "difficulty": "basic",
+      "maxScore": 1,
+      "title": "Простейшие уравнения"
+    },
+    {
+      "number": 7,
+      "part": 1,
+      "type": "short",
+      "topic": "1.4",
+      "difficulty": "basic",
+      "maxScore": 1,
+      "title": "Вычисления и преобразования"
+    },
+    {
+      "number": 8,
+      "part": 1,
+      "type": "short",
+      "topic": "4.1",
+      "difficulty": "basic",
+      "maxScore": 1,
+      "title": "Производная"
+    },
+    {
+      "number": 9,
+      "part": 1,
+      "type": "short",
+      "topic": "2.2",
+      "difficulty": "advanced",
+      "maxScore": 1,
+      "title": "Задача с прикладным содержанием"
+    },
+    {
+      "number": 10,
+      "part": 1,
+      "type": "short",
+      "topic": "2.1",
+      "difficulty": "advanced",
+      "maxScore": 1,
+      "title": "Текстовая задача"
+    },
+    {
+      "number": 11,
+      "part": 1,
+      "type": "short",
+      "topic": "3.3",
+      "difficulty": "advanced",
+      "maxScore": 1,
+      "title": "Графики функций"
+    },
+    {
+      "number": 12,
+      "part": 1,
+      "type": "short",
+      "topic": "4.2",
+      "difficulty": "advanced",
+      "maxScore": 1,
+      "title": "Наибольшее и наименьшее значение"
+    }
+  ]
+}

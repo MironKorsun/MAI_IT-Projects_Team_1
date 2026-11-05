@@ -1,0 +1,279 @@
+{
+  "variant": 1,
+  "examCode": "math-profile",
+  "title": "Математика. Профильный уровень. Вариант 1",
+  "tasks": [
+    {
+      "id": "v1-01",
+      "number": 1,
+      "part": 1,
+      "topic_code": "5.1",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "В треугольнике $ABC$ угол $C$ равен $90^\\circ$, $AB = 10$, $AC = 6$. Найдите $\\sin A$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "0.8"
+        ]
+      },
+      "reference_ids": [
+        "ref-trig"
+      ],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-02",
+      "number": 2,
+      "part": 1,
+      "topic_code": "5.6",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Даны векторы $\\vec a(2;\\,-3)$ и $\\vec b(4;\\,1)$. Найдите скалярное произведение $\\vec a\\cdot\\vec b$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "5"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-03",
+      "number": 3,
+      "part": 1,
+      "topic_code": "5.4",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Объём куба равен $64$. Найдите площадь его поверхности.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "96"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-04",
+      "number": 4,
+      "part": 1,
+      "topic_code": "6.3",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "В сборнике билетов по биологии всего $25$ билетов, в $10$ из них встречается вопрос о грибах. На экзамене выпускнику достаётся один случайно выбранный билет. Найдите вероятность того, что в этом билете <b>не будет</b> вопроса о грибах.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "0.6"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-05",
+      "number": 5,
+      "part": 1,
+      "topic_code": "6.3",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Стрелок при каждом выстреле попадает в мишень с вероятностью $0{,}8$ независимо от результатов предыдущих выстрелов. Найдите вероятность того, что первые два раза он попал в мишень, а третий раз промахнулся.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "0.128"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-06",
+      "number": 6,
+      "part": 1,
+      "topic_code": "2.1",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Найдите корень уравнения $\\log_2(4 - x) = 3$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "-4"
+        ]
+      },
+      "reference_ids": [
+        "ref-log"
+      ],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-07",
+      "number": 7,
+      "part": 1,
+      "topic_code": "1.4",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Найдите значение выражения $\\dfrac{\\left(2^{3}\\right)^{4}}{2^{10}}$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "4"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-08",
+      "number": 8,
+      "part": 1,
+      "topic_code": "4.1",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Прямая $y = 7x - 5$ параллельна касательной к графику функции $y = x^2 + 6x - 8$. Найдите абсциссу точки касания.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "0.5"
+        ]
+      },
+      "reference_ids": [
+        "ref-deriv"
+      ],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-09",
+      "number": 9,
+      "part": 1,
+      "topic_code": "2.2",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Высота над землёй подброшенного вверх мяча меняется по закону $h(t) = 1{,}6 + 8t - 5t^2$, где $h$ — высота в метрах, $t$ — время в секундах с момента броска. Сколько секунд мяч будет находиться на высоте не менее $3$ метров?",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "1.2"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-10",
+      "number": 10,
+      "part": 1,
+      "topic_code": "2.1",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Моторная лодка прошла против течения реки $112$ км и вернулась в пункт отправления, затратив на обратный путь на $6$ часов меньше. Найдите скорость лодки в неподвижной воде, если скорость течения равна $3$ км/ч. Ответ дайте в км/ч.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "11"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-11",
+      "number": 11,
+      "part": 1,
+      "topic_code": "3.3",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Функция задана формулой $f(x) = 2^{x} + b$. Известно, что $f(3) = 5$. Найдите $f(5)$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "29"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v1-12",
+      "number": 12,
+      "part": 1,
+      "topic_code": "4.2",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Найдите точку максимума функции $y = x^3 - 48x + 17$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "-4"
+        ]
+      },
+      "reference_ids": [
+        "ref-deriv"
+      ],
+      "author": "Методист-разработчик 2"
+    }
+  ]
+}
