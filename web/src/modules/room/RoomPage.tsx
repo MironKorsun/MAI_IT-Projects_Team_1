@@ -386,3 +386,202 @@ export default function RoomPage() {
           </section>
         )}
       </div>
+
+      {!manage && (
+        <div style={{ marginTop: 24 }}>
+          <Link to="/staff/monitor" className="btn btn-ghost">
+            <Icon name="arrowLeft" /> К сводной панели
+          </Link>
+        </div>
+      )}
+
+      {action?.kind === 'code' && (
+        <Confirm title="Выпустить новый код аудитории?" confirmLabel="Выпустить код" secondStep={false} onClose={() => setAction(undefined)} onConfirm={() => act(() => staffApi.post(`/rooms/${room.id}/access-code`), 'Новый код выпущен, прежний аннулирован')}>
+          <p className="muted">Прежний код будет аннулирован. Участники, ещё не вошедшие в систему, должны будут ввести новый код.</p>
+        </Confirm>
+      )}
+      {action?.kind === 'start' && (
+        <Confirm title="Начать экзамен в аудитории?" confirmLabel="Начать экзамен" onClose={() => setAction(undefined)} onConfirm={() => act(() => staffApi.post(`/rooms/${room.id}/start`), 'Экзамен начат. Участникам отправлен сигнал старта.')}>
+          <p className="muted">Вошедшим участникам ({stats.loggedIn}) будет отправлен сигнал старта, время старта зафиксирует сервер.</p>
+          {stats.absent.length > 0 && (
+            <div className="tile card-tight stack" style={{ '--gap': '6px' } as React.CSSProperties}>
+              <span className="small strong">Не вошли в систему · {stats.absent.length}</span>
+              {stats.absent.map((s) => (
+                <span key={s.workstationId} className="small">
+                  {s.label} — {s.participant!.displayName} <span className="muted mono">{s.participant!.code}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </Confirm>
+      )}
+      {action?.kind === 'message' && <MessageDialog roomId={room.id} onClose={() => setAction(undefined)} onSent={() => act(async () => undefined, 'Сообщение отправлено участникам')} />}
+      {action?.kind === 'links' && <LinksDialog room={room} onClose={() => setAction(undefined)} />}
+      {action && 'seat' in action && dicts && <SeatAction action={action} room={room} dicts={dicts} onClose={() => setAction(undefined)} onDone={(ok) => act(async () => undefined, ok)} />}
+    </>
+  );
+}
+
+function Stat({ label, value, sub, progress, className = '' }: { label: string; value: string; sub?: string; progress?: number; className?: string }) {
+  return (
+    <div className={`glass card stat kpi ${className}`}>
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value}</span>
+      {sub && <span className="small muted">{sub}</span>}
+      {progress !== undefined && (
+        <div className="progress" aria-hidden="true">
+          <i style={{ width: `${progress * 100}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Меню действий с местом: слой .menu.glass-float в document.body, позиция fixed от кнопки
+ * (по правому краю, на 6 px ниже; не помещается — над кнопкой), поэтому прокрутка таблицы его не обрезает.
+ * Закрывается по Esc (фокус — на кнопку), щелчку вне меню, прокрутке и выбору пункта; стрелки — между пунктами.
+ */
+function SeatMenu({ seat, onPick, started }: { seat: SeatDto; onPick: (k: SeatKind) => void; started: boolean }) {
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  const inProgress = seat.participant?.state === 'inProgress';
+  // не вошёл в систему: доступен только перевод (акт и досрочное завершение сервер для него не принимает)
+  const assigned = seat.participant?.state === 'assigned';
+
+  useLayoutEffect(() => {
+    const b = btn.current;
+    const m = menu.current;
+    if (!open || !b || !m) return;
+    const r = b.getBoundingClientRect();
+    const w = m.offsetWidth;
+    const h = m.offsetHeight;
+    const below = r.bottom + 6;
+    const above = r.top - 6 - h;
+    m.style.left = `${Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8))}px`;
+    m.style.top = `${below + h > window.innerHeight - 8 && above >= 8 ? above : below}px`;
+    m.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    // прокрутка сразу после открытия (кнопку довели до экрана, инерция колеса) и внутри меню не закрывает его
+    const openedAt = performance.now();
+    const onScroll = (e: Event) => {
+      if (performance.now() - openedAt < 200 || menu.current?.contains(e.target as Node)) return;
+      close();
+    };
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!menu.current?.contains(t) && !btn.current?.contains(t)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      close();
+      btn.current?.focus();
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  const onMenuKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+    if (!items.length) return;
+    if (e.key === 'Tab') {
+      // Tab уводит фокус дальше по странице — от кнопки меню
+      setOpen(false);
+      btn.current?.focus();
+      return;
+    }
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    const next = e.key === 'ArrowDown' ? (i + 1) % items.length : e.key === 'ArrowUp' ? (i - 1 + items.length) % items.length : e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    items[next].focus();
+  };
+
+  const pick = (k: SeatKind) => {
+    // Фокус — на кнопку меню: туда же его вернёт закрытие диалога
+    btn.current?.focus();
+    setOpen(false);
+    onPick(k);
+  };
+
+   return (
+    <>
+      <button ref={btn} type="button" className="btn btn-sm" aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined} onClick={() => setOpen((v) => !v)}>
+        Действия <Icon name="chevronDown" />
+      </button>
+      {open &&
+        createPortal(
+          <div ref={menu} id={menuId} role="menu" aria-label={`Действия: ${seat.label}`} className="menu glass-float" onKeyDown={onMenuKey}>
+            {inProgress && (
+              <button type="button" role="menuitem" tabIndex={-1} className="menu-item" onClick={() => pick('compensate')}>
+                <Icon name="clock" /> Компенсировать время
+              </button>
+            )}
+            <button type="button" role="menuitem" tabIndex={-1} className="menu-item" onClick={() => pick('relocate')}>
+              <Icon name="monitor" /> Перевести на другое место
+            </button>
+            {started && !assigned && (
+              <button type="button" role="menuitem" tabIndex={-1} className="menu-item menu-item-wrap" onClick={() => pick('early')}>
+                <Icon name="info" /> Не закончил по объективной причине
+              </button>
+            )}
+            {!assigned && (
+              <>
+                <div className="menu-sep" role="separator" />
+                <button type="button" role="menuitem" tabIndex={-1} className="menu-item danger" onClick={() => pick('incident')}>
+                  <Icon name="alert" /> Акт о нарушении
+                </button>
+              </>
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function SeatAction({ action, room, dicts, onClose, onDone }: { action: { kind: SeatKind; seat: SeatDto }; room: RoomDto; dicts: Dicts; onClose: () => void; onDone: (msg: string) => void }) {
+  const p = action.seat.participant!;
+  const [minutes, setMinutes] = useState(5);
+  const [reason, setReason] = useState('');
+  const [desc, setDesc] = useState('');
+  const [target, setTarget] = useState('');
+  // простой по данным сервера (из ответа 422): поле минут подсвечивается, лимит виден под полем
+  const [avail, setAvail] = useState<number>();
+  const minutesInvalid = avail !== undefined && minutes > avail;
+  const free = room.seats.filter((s) => !s.participant && s.check?.passed);
+  const who = `${p.displayName} (${action.seat.label})`;
+  const map = {
+    compensate: {
+      title: 'Компенсация времени простоя',
+      label: 'Компенсировать',
+      second: false,
+      danger: false,
+      run: () => staffApi.post(`/attempts/${p.attemptId}/time-compensation`, { minutes, reason }),
+      ok: `Время участника продлено на ${minutes} мин`,
+      valid: !!reason && minutes > 0 && !minutesInvalid,
+    },
+    incident: {
+      title: 'Акт об удалении участника',
+      label: 'Оформить акт и удалить',
+      second: true,
+      danger: true,
+      run: () => staffApi.post(`/attempts/${p.attemptId}/incidents`, { type: reason, description: desc }),
+      ok: 'Акт оформлен, попытка завершена',
+      valid: !!reason && desc.trim().length > 0,
+    },
