@@ -93,7 +93,8 @@ export default function MonitorDashboard() {
           </>
         }
       />
-       <div className="bento reveal" style={{ '--i': 1 } as React.CSSProperties}>
+
+      <div className="bento reveal" style={{ '--i': 1 } as React.CSSProperties}>
         <Kpi label="Участников в активных сессиях" value={totals.participants} sub={`${totals.rooms} ${plural(totals.rooms, 'аудитория', 'аудитории', 'аудиторий')}`} />
         <Kpi label="Выполняют работу" value={totals.inProgress} sub={`${totals.offline} без связи > 60 с`} warn={totals.offline > 0} />
         <Kpi label="События целостности" value={totals.integrity} sub="за текущие сессии" />
@@ -116,7 +117,7 @@ export default function MonitorDashboard() {
                   </div>
                   <span className="meta num">{p.rooms.length} ауд.</span>
                 </div>
-                 <div className="table-wrap">
+                <div className="table-wrap">
                   <table className="table table-live">
                     <thead>
                       <tr>
@@ -177,7 +178,7 @@ export default function MonitorDashboard() {
             <Line points={data.timeline.map((p) => ({ x: p.minute, y: p.count }))} height={110} ariaLabel="События целостности за последний час" format={(p) => <><b>{p.y}</b> · {fmtTime(p.x + ':00Z')}</>} />
           ) : (
             <Skeleton h={110} />
-            )}
+          )}
           <div className="divider" style={{ margin: '16px 0 4px' }} />
           {recent.data ? (
             recent.data.items.length ? (

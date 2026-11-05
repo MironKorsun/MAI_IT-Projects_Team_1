@@ -58,7 +58,7 @@ export const TABLES: readonly TableSpec[] = [
     pk: ['id'],
     key: byIdKey,
     cols: [t('id'), t('examCode'), int('number'), t('title'), js('encrypted'), js('wrappedKey'), js('keys'), ts('importedAt'), t('checksum')],
-      },
+  },
   {
     table: 'exam_sessions',
     collection: 'sessions',
@@ -77,7 +77,7 @@ export const TABLES: readonly TableSpec[] = [
     cols: [t('id'), t('sessionId'), t('ppeId'), t('number'), t('accessCode'), ts('accessCodeIssuedAt'), ts('startedAt'), js('organizerIds'), js('messages')],
   },
   { table: 'workstations', collection: 'workstations', pk: ['id'], key: byIdKey, cols: [t('id'), t('roomId'), t('label'), t('secret'), js('check')] },
-    {
+  {
     table: 'attempts',
     collection: 'attempts',
     pk: ['id'],

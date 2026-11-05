@@ -107,7 +107,7 @@ export default async function monitoringRoutes(app: FastifyInstance) {
     return reply
       .header('content-type', 'text/csv; charset=utf-8')
       .header('content-disposition', 'attachment; filename="audit-events.csv"')
-      .send('﻿' + rows.join('\n') + '\n'); //BOM
+      .send('﻿' + rows.join('\n') + '\n');
   });
 
   app.get('/audit-events/verify', observer, async () => ({ ...verifyChain(), records: db.audit.length }));

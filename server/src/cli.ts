@@ -21,8 +21,7 @@ if (cmd === 'hash-password') {
   }
   console.log(hashPassword(pw));
   process.exit(0);
-
-  }
+}
 if (!config.databaseUrl) {
   console.error('Не задан DATABASE_URL');
   process.exit(1);

@@ -1,0 +1,279 @@
+{
+  "variant": 2,
+  "examCode": "math-profile",
+  "title": "Математика. Профильный уровень. Вариант 2",
+  "tasks": [
+    {
+      "id": "v2-01",
+      "number": 1,
+      "part": 1,
+      "topic_code": "5.1",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "В треугольнике $ABC$ угол $C$ равен $90^\\circ$, $AB = 25$, $AC = 7$. Найдите $\\cos A$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "0.28"
+        ]
+      },
+      "reference_ids": [
+        "ref-trig"
+      ],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-02",
+      "number": 2,
+      "part": 1,
+      "topic_code": "5.6",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Даны векторы $\\vec a(3;\\,-2)$ и $\\vec b(1;\\,5)$. Найдите скалярное произведение $\\vec a\\cdot\\vec b$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "-7"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-03",
+      "number": 3,
+      "part": 1,
+      "topic_code": "5.4",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Объём куба равен $27$. Найдите площадь его поверхности.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "54"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-04",
+      "number": 4,
+      "part": 1,
+      "topic_code": "6.3",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "В сборнике билетов по химии всего $20$ билетов, в $13$ из них встречается вопрос о кислотах. Найдите вероятность того, что в случайно выбранном билете <b>не будет</b> вопроса о кислотах.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "0.35"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-05",
+      "number": 5,
+      "part": 1,
+      "topic_code": "6.3",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Стрелок при каждом выстреле попадает в мишень с вероятностью $0{,}7$ независимо от предыдущих выстрелов. Найдите вероятность того, что первый раз он попал, а следующие два раза промахнулся.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "0.063"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-06",
+      "number": 6,
+      "part": 1,
+      "topic_code": "2.1",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Найдите корень уравнения $\\log_5(x + 3) = 2$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "22"
+        ]
+      },
+      "reference_ids": [
+        "ref-log"
+      ],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-07",
+      "number": 7,
+      "part": 1,
+      "topic_code": "1.4",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Найдите значение выражения $\\dfrac{\\left(3^{2}\\right)^{3}}{3^{4}}$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "9"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-08",
+      "number": 8,
+      "part": 1,
+      "topic_code": "4.1",
+      "type": "short",
+      "difficulty": "basic",
+      "max_score": 1,
+      "content": {
+        "condition": "Прямая $y = 3x + 1$ параллельна касательной к графику функции $y = x^2 - 5x + 2$. Найдите абсциссу точки касания.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "4"
+        ]
+      },
+      "reference_ids": [
+        "ref-deriv"
+      ],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-09",
+      "number": 9,
+      "part": 1,
+      "topic_code": "2.2",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Высота над землёй подброшенного вверх мяча меняется по закону $h(t) = 1 + 11t - 5t^2$. Сколько секунд мяч будет находиться на высоте не менее $3$ метров?",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "decimal",
+        "compare": "number",
+        "correct": [
+          "1.8"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-10",
+      "number": 10,
+      "part": 1,
+      "topic_code": "2.1",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Моторная лодка прошла против течения реки $120$ км и вернулась в пункт отправления, затратив на обратный путь на $5$ часов меньше. Найдите скорость лодки в неподвижной воде, если скорость течения равна $2$ км/ч. Ответ дайте в км/ч.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "10"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-11",
+      "number": 11,
+      "part": 1,
+      "topic_code": "3.3",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Функция задана формулой $f(x) = 3^{x} + b$. Известно, что $f(2) = 4$. Найдите $f(4)$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "76"
+        ]
+      },
+      "reference_ids": [],
+      "author": "Методист-разработчик 2"
+    },
+    {
+      "id": "v2-12",
+      "number": 12,
+      "part": 1,
+      "topic_code": "4.2",
+      "type": "short",
+      "difficulty": "advanced",
+      "max_score": 1,
+      "content": {
+        "condition": "Найдите точку минимума функции $y = x^3 - 27x + 5$.",
+        "question": "Запишите ответ в поле ниже."
+      },
+      "answer": {
+        "format": "integer",
+        "compare": "number",
+        "correct": [
+          "3"
+        ]
+      },
+      "reference_ids": [
+        "ref-deriv"
+      ],
+      "author": "Методист-разработчик 2"
+    }
+  ]
+}

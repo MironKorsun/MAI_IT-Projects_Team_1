@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0",
+  "packageId": "b7a1c3e0-2f4d-4f61-9a0e-6c0f5d2a7101",
+  "subject": { "code": "math-profile", "title": "Математика (профильный уровень)" },
+  "year": 2026,
+  "version": "1.0.0",
+  "createdAt": "2026-10-14",
+  "author": "Отдел разработки КИМ «ФИПИ-ЕГЭ»",
+  "durationMin": 235,
+  "variants": ["tasks/variant-1.json", "tasks/variant-2.json"],
+  "referenceMaterials": "reference_materials/references.json",
+  "instruction": "instruction.md",
+  "variantPlan": "variant_plan.json",
+  "branchingTree": "branching_tree.json"
+}

@@ -38,7 +38,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     db.sessions.slice().sort((a, b) => b.date.localeCompare(a.date)).map(sessionDto),
   );
 
-    /** Создание экзаменационной сессии (FR-43). */
+  /** Создание экзаменационной сессии (FR-43). */
   app.post<{
     Body: {
       examCode: string;
@@ -48,7 +48,7 @@ export default async function adminRoutes(app: FastifyInstance) {
       proctoring: boolean;
       rooms: { ppeId: string; number: string; seats: number; organizerIds?: string[] }[];
     };
-      }>(
+  }>(
     '/exam-sessions',
     {
       ...admin,
@@ -80,7 +80,7 @@ export default async function adminRoutes(app: FastifyInstance) {
           },
         },
       },
-          },
+    },
     async (req) => {
       const b = req.body;
       const errors: { pointer: string; detail: string }[] = [];
@@ -98,7 +98,7 @@ export default async function adminRoutes(app: FastifyInstance) {
       });
       if (errors.length) throw invalid(errors, 'VALIDATION_FAILED', 422);
       const ppe = byId(db.ppes, b.rooms[0].ppeId)!;
-            const session: ExamSession = {
+      const session: ExamSession = {
         id: uuid(),
         examCode: b.examCode,
         date: b.date,
@@ -125,7 +125,8 @@ export default async function adminRoutes(app: FastifyInstance) {
       return sessionDto(session);
     },
   );
-    /** Проверка файла распределения построчно (FR-44). Формат: код_участника;код_ППЭ;аудитория;место */
+
+  /** Проверка файла распределения построчно (FR-44). Формат: код_участника;код_ППЭ;аудитория;место */
   app.post<{ Params: { id: string }; Body: { csv: string } }>(
     '/exam-sessions/:id/allocation/validate',
     {
@@ -133,7 +134,7 @@ export default async function adminRoutes(app: FastifyInstance) {
       bodyLimit: 10 * 1024 * 1024,
       schema: { body: { type: 'object', additionalProperties: false, required: ['csv'], properties: { csv: { type: 'string', maxLength: 8_000_000 } } } },
     },
-        async (req) => {
+    async (req) => {
       const session = byId(db.sessions, req.params.id);
       if (!session) throw notFound();
       if (session.status !== 'preparation') throw new ApiError(409, 'INVALID_STATE', 'Сессия не в статусе «Подготовка»');
@@ -176,7 +177,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     },
   );
 
-    /** Применение только проверенного файла целиком, в одной транзакции (FR-45). */
+  /** Применение только проверенного файла целиком, в одной транзакции (FR-45). */
   app.post<{ Params: { id: string }; Body: { validationId: string; hash: string } }>(
     '/exam-sessions/:id/allocation',
     {
@@ -401,7 +402,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     },
   );
 
-    app.get('/scales', { preHandler: requireStaff('admin', 'analyst') }, async () => db.scales);
+  app.get('/scales', { preHandler: requireStaff('admin', 'analyst') }, async () => db.scales);
 
   /** Загрузка шкалы перевода новой версией (FR-34; ТЗ АО FR-01, FR-02, FR-04). */
   app.put<{ Params: { code: string; year: string }; Body: { values: number[]; threshold: number } }>(

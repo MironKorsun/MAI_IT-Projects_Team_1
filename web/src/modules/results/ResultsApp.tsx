@@ -37,7 +37,7 @@ export default function ResultsApp() {
     setAuthed(false);
   };
 
-    return (
+  return (
     <div className="results-app">
       <Backdrop />
       <div className="page" style={{ ...W, paddingBottom: 0 }}>
@@ -78,7 +78,7 @@ function Login({ onDone }: { onDone: (name: string) => void }) {
       setBusy(false);
     }
   };
-    return (
+  return (
     <main className="page-narrow">
       <form className="glass panel card-lg stack reveal" style={{ '--gap': '16px' } as CSSProperties} onSubmit={submit}>
         <div className="stack" style={{ '--gap': '8px', marginBottom: 8 } as CSSProperties}>
@@ -127,7 +127,7 @@ function Results({ name, onLogout }: { name: string; onLogout: () => void }) {
     void load();
   }, []);
 
-    return (
+  return (
     <main className="page" style={W}>
       <div className="title-row reveal" style={at(0)}>
         <div className="titles">
@@ -151,7 +151,7 @@ function Results({ name, onLogout }: { name: string; onLogout: () => void }) {
         </div>
       </div>
 
-            {err ? (
+      {err ? (
         <ErrorBox error={err} onRetry={load} />
       ) : !results ? (
         <Skeleton h={360} r={24} />
@@ -194,7 +194,7 @@ function ResultCard({ r, appeals, i }: { r: MyResultDto; appeals: AppealDto[]; i
         {appeals.some(isActive) ? <StatusBadge tone="accent">Апелляция на рассмотрении</StatusBadge> : <StatusBadge>Результат опубликован</StatusBadge>}
       </div>
 
-            <div className="score-hero">
+      <div className="score-hero">
         <div className="tile-accent inner card score-tile">
           <span className="score-label">{r.testScore !== undefined ? 'Тестовый балл' : 'Отметка'}</span>
           <span className="score-value">{main}</span>
@@ -222,7 +222,8 @@ function ResultCard({ r, appeals, i }: { r: MyResultDto; appeals: AppealDto[]; i
           <dd>{fmtDateTime(r.publishedAt)}</dd>
         </dl>
       </div>
-            <h3 className="h3" style={{ margin: '32px 0 12px' }}>
+
+      <h3 className="h3" style={{ margin: '32px 0 12px' }}>
         Ответы по заданиям
       </h3>
       <ul className="task-results" role="list">
@@ -266,7 +267,7 @@ function AppealCard({ r, appeals, i, onAppeal }: { r: MyResultDto; appeals: Appe
           Подать апелляцию
         </button>
       </div>
-            {appeals.length > 0 && (
+      {appeals.length > 0 && (
         <div className="stack" style={{ '--gap': '8px' } as CSSProperties}>
           {appeals.map((a) => (
             <div key={a.id} className="tile card-tight stack" style={{ '--gap': '12px' } as CSSProperties}>
@@ -319,7 +320,7 @@ function AppealForm({ r, onClose, onDone }: { r: MyResultDto; onClose: () => voi
       setBusy(false);
     }
   };
-    return (
+  return (
     <Modal
       wide
       title={`Апелляция · ${r.examTitle}`}
@@ -336,7 +337,7 @@ function AppealForm({ r, onClose, onDone }: { r: MyResultDto; onClose: () => voi
           </button>
         </>
       }
-          >
+    >
       <p className="small muted">Выберите задания, с баллами за которые вы не согласны, и опишите причину.</p>
       <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <legend className="label" style={{ padding: 0, marginBottom: 8 }}>

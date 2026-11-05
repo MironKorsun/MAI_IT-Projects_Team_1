@@ -20,6 +20,7 @@ function Ask($prompt, $min) {
 }
 
 if (Test-Path (Join-Path $dir 'database_url')) { Write-Host 'Секреты уже созданы (deploy\secrets). Удалите каталог, чтобы создать заново.'; exit 0 }
+
 $admin = Ask 'Пароль администратора системы (логин admin)' 12
 $pg = Ask 'Пароль базы данных PostgreSQL' 12
 $analyst = Ask 'Пароль аналитика БД (ege_analyst, только чтение)' 12

@@ -1,0 +1,68 @@
+[
+  {
+    "id": "ref-trig",
+    "topic_code": "1.2",
+    "kind": "formula",
+    "title": "Основные тригонометрические тождества",
+    "content": {
+      "latex": "\\sin^2\\alpha + \\cos^2\\alpha = 1,\\quad \\operatorname{tg}\\alpha = \\dfrac{\\sin\\alpha}{\\cos\\alpha}"
+    },
+    "task_ids": [
+      "v1-01",
+      "v2-01"
+    ]
+  },
+  {
+    "id": "ref-deriv",
+    "topic_code": "4.1",
+    "kind": "table",
+    "title": "Таблица производных",
+    "content": {
+      "rows": [
+        [
+          "f(x)",
+          "f′(x)"
+        ],
+        [
+          "xⁿ",
+          "n·xⁿ⁻¹"
+        ],
+        [
+          "aˣ",
+          "aˣ·ln a"
+        ],
+        [
+          "logₐx",
+          "1 / (x·ln a)"
+        ],
+        [
+          "sin x",
+          "cos x"
+        ],
+        [
+          "cos x",
+          "−sin x"
+        ]
+      ]
+    },
+    "task_ids": [
+      "v1-08",
+      "v2-08",
+      "v1-12",
+      "v2-12"
+    ]
+  },
+  {
+    "id": "ref-log",
+    "topic_code": "1.4",
+    "kind": "formula",
+    "title": "Свойства логарифмов",
+    "content": {
+      "latex": "\\log_a(bc) = \\log_a b + \\log_a c,\\quad \\log_a b^{k} = k\\log_a b"
+    },
+    "task_ids": [
+      "v1-06",
+      "v2-06"
+    ]
+  }
+]

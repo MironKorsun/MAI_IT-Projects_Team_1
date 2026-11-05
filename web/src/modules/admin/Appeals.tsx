@@ -27,7 +27,7 @@ export default function Appeals() {
     setComment('');
     setAct({ a, status: next });
   };
-    return (
+  return (
     <>
       <PageHead eyebrow="Администрирование" title="Апелляции" subtitle="Статус меняется по решению конфликтной комиссии; удовлетворённая апелляция запускает перерасчёт." />
       <div className="reveal" style={{ '--i': 1 } as React.CSSProperties}>
@@ -54,7 +54,7 @@ export default function Appeals() {
               {rows.length} {plural(rows.length, 'апелляция', 'апелляции', 'апелляций')}
             </span>
           )}
-                  </div>
+        </div>
         {error ? <ErrorBox error={error} onRetry={reload} /> : null}
         <section className="glass table-panel" aria-label="Апелляции" style={error ? { marginTop: 12 } : undefined}>
           {!rows && !error && <Skeleton h={200} />}
@@ -62,7 +62,7 @@ export default function Appeals() {
           {data && data.length > 0 && rows && !rows.length && <Empty icon="search">По заданным условиям апелляций нет.</Empty>}
           {rows && rows.length > 0 && (
             <div className="table-wrap">
-                              <table className="table table-cards">
+              <table className="table table-cards">
                 <thead>
                   <tr>
                     <th>Номер</th>
@@ -76,7 +76,7 @@ export default function Appeals() {
                     </th>
                   </tr>
                 </thead>
-                                <tbody>
+                <tbody>
                   {rows.map((a) => (
                     <tr key={a.id}>
                       <td className="mono small" data-label="Номер">
@@ -97,7 +97,7 @@ export default function Appeals() {
                       <td data-label="Статус">
                         <StatusBadge tone={appealTone(a.status)}>{APPEAL_STATUS_LABEL[a.status]}</StatusBadge>
                       </td>
-                                            <td className="r" data-label="Действия">
+                      <td className="r" data-label="Действия">
                         <div className="row-actions">
                           {a.status === 'registered' && (
                             <button type="button" className="btn btn-sm" onClick={() => open(a, 'reviewing')}>
@@ -123,7 +123,7 @@ export default function Appeals() {
             </div>
           )}
         </section>
-              </div>
+      </div>
       {act && (
         <Confirm
           title={`${APPEAL_STATUS_LABEL[act.status]} · ${act.a.number}`}

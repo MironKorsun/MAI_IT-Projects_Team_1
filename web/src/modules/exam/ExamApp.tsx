@@ -51,7 +51,7 @@ export default function ExamApp() {
     };
   }, [sc?.contrast, sc?.scale]);
 
-    useEffect(() => {
+  useEffect(() => {
     document.title = 'Экзамен · ВП ТС ЕГЭ';
   }, []);
 
@@ -129,7 +129,7 @@ function CheckScreen({ exam }: { exam: ExamEngine }) {
     void run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-    return (
+  return (
     <StepPage exam={exam} w={640}>
       <section className="glass panel card-lg stack reveal" style={{ '--i': 1, '--gap': '24px' } as React.CSSProperties} aria-labelledby="chk">
         <div className="stack" style={{ '--gap': '8px' } as React.CSSProperties}>
@@ -141,7 +141,7 @@ function CheckScreen({ exam }: { exam: ExamEngine }) {
             {exam.ws?.session.title} · {fmtDate(exam.ws?.session.date)}
           </p>
         </div>
-                <ul className="check-list" aria-live="polite">
+        <ul className="check-list" aria-live="polite">
           {exam.checks.map((c) => (
             <li key={c.id} className="tile">
               <div className="stack" style={{ '--gap': '2px', minWidth: 0 } as React.CSSProperties}>
@@ -167,7 +167,7 @@ function CheckScreen({ exam }: { exam: ExamEngine }) {
               </div>
             </li>
           ))}
-                  </ul>
+        </ul>
         {result === false && (
           <div className="notice bad fade-in" role="alert">
             <span className="notice-body">
@@ -200,7 +200,7 @@ function LoginScreen({ exam }: { exam: ExamEngine }) {
     await exam.login(code.trim(), access.trim());
     setBusy(false);
   };
-    return (
+  return (
     <StepPage exam={exam} w={480}>
       <form className="glass panel card-lg stack reveal" style={{ '--i': 1, '--gap': '20px' } as React.CSSProperties} onSubmit={submit} noValidate>
         <div className="stack" style={{ '--gap': '8px' } as React.CSSProperties}>
@@ -262,7 +262,7 @@ function BriefScreen({ exam }: { exam: ExamEngine }) {
           <div className="brief-body">
             <Markdown text={instruction} skipTitle />
           </div>
-                  </section>
+        </section>
         <aside className="brief-aside">
           <section className="glass card stack" style={{ '--gap': '16px' } as React.CSSProperties} aria-labelledby="params-h">
             <h2 id="params-h" className="h3">
@@ -290,7 +290,7 @@ function BriefScreen({ exam }: { exam: ExamEngine }) {
                 {s.specialConditions.contrast && <span>Контрастная тема</span>}
               </div>
             )}
-                      </section>
+          </section>
           <section className="glass card stack brief-start" style={{ '--gap': '16px' } as React.CSSProperties} aria-live="polite">
             <div>
               {started ? (

@@ -30,7 +30,7 @@ test('PostgreSQL: миграции, запись, чтение, фиксация
       assert.deepEqual(rows.map((r) => r.column_name).sort(), [...cols].sort(), table);
     }
 
-        await dbm.loadDb();
+    await dbm.loadDb();
     const password = 'test-staff-password-2026';
     seedStaging({ staffPassword: password, participantPin: '123456', accessCode: '482915' });
     await dbm.commitNow();
@@ -56,7 +56,7 @@ test('PostgreSQL: миграции, запись, чтение, фиксация
     assert.ok(ev[0].n >= 1, 'событие входа записано в журнал до ответа');
     await app.close();
 
-        // Журнал только дополняется (NFR-25)
+    // Журнал только дополняется (NFR-25)
     await assert.rejects(pool.query("UPDATE audit_events SET details = 'x'"), /не может быть изменена/);
     await assert.rejects(pool.query('DELETE FROM audit_events'), /не может быть изменена/);
 

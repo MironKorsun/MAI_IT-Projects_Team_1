@@ -84,6 +84,7 @@ export function registerSocket(
     clients.delete(client);
   });
 }
+
 setInterval(() => {
   const now = Date.now();
   for (const c of clients) if (now - c.lastPing > 60_000) c.socket.close(4408, 'idle');

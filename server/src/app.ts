@@ -59,7 +59,7 @@ export async function buildApp() {
   await app.register(cookie);
   await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
 
-    // Изменяющий запрос подтверждается клиенту только после фиксации в PostgreSQL (ТЗ СЧ NFR-09, NFR-10).
+  // Изменяющий запрос подтверждается клиенту только после фиксации в PostgreSQL (ТЗ СЧ NFR-09, NFR-10).
   app.addHook('onSend', async (req, reply, payload) => {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return payload;
     try {
@@ -81,7 +81,7 @@ export async function buildApp() {
     if (req.url.startsWith('/api/')) reply.header('cache-control', reply.getHeader('cache-control') ?? 'no-store');
   });
 
-    app.setErrorHandler((err: FastifyError | ApiError, req, reply) => {
+  app.setErrorHandler((err: FastifyError | ApiError, req, reply) => {
     let apiErr: ApiError;
     if (err instanceof ApiError) apiErr = err;
     else if ((err as FastifyError).validation) {
@@ -140,7 +140,7 @@ export async function buildApp() {
     }
   });
 
-    if (existsSync(config.webDist)) {
+  if (existsSync(config.webDist)) {
     await app.register(fastifyStatic, {
       root: config.webDist,
       wildcard: true,

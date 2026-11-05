@@ -40,7 +40,6 @@ export default function StaffLogin() {
             <Icon name="arrowLeft" /> На главную
           </Link>
         </div>
-
         <form className="glass panel card-lg stack reveal" style={{ '--i': 1, '--gap': '16px' } as CSSProperties} onSubmit={submit} noValidate>
           <div className="stack" style={{ '--gap': '8px', marginBottom: 8 } as CSSProperties}>
             <span className="eyebrow">ЕГЭ · Математика</span>
@@ -65,7 +64,6 @@ export default function StaffLogin() {
               required
               autoFocus
             />
-
           </label>
           <label className="field">
             <span className="label">Пароль</span>

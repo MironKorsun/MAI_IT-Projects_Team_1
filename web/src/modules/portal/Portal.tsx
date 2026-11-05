@@ -44,6 +44,8 @@ const FEATURES: { title: string; text: string }[] = [
   { title: 'Защита заданий', text: 'Вариант расшифровывается только после начала экзамена' },
 ];
 
+
+
 /** Порядок появления блока (E.3): строка заголовка — 0, ряды плиток — 1…3, стенд — 4. */
 const at = (i: number) => ({ '--i': i }) as CSSProperties;
 
@@ -220,7 +222,7 @@ export default function Portal() {
                 <p className="meta">Вход по коду участника и PIN</p>
               </div>
             </Link>
-    
+
             {/* D — порядок проведения */}
             <section className="glass card span-8 min-232 pt-d reveal" style={at(2)} aria-labelledby="tile-d">
               <div className="card-head">
@@ -243,7 +245,7 @@ export default function Portal() {
                 ))}
               </ol>
             </section>
-  
+
             {/* E — расписание из /api/v1/public/overview */}
             <section className="glass card span-4 min-232 pt-e reveal" style={at(2)} aria-labelledby="tile-e">
               <div className="card-head">

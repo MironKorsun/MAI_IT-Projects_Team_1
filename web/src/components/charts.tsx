@@ -123,7 +123,7 @@ export function Columns({ data, height = 220, unit = '', ariaLabel, marker }: { 
   const ticks = [0, 0.5, 1].map((k) => Math.round(niceMax * k));
   const y = (v: number) => pad.t + ih - (v / niceMax) * ih;
   const legend = data.some((d) => d.highlight !== undefined);
-    return (
+  return (
     <div>
       {legend && (
         <div className="small muted" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginBottom: 8 }}>
@@ -137,7 +137,7 @@ export function Columns({ data, height = 220, unit = '', ariaLabel, marker }: { 
           </span>
         </div>
       )}
-            <div ref={ref} style={{ position: 'relative' }}>
+      <div ref={ref} style={{ position: 'relative' }}>
         <svg width={width} height={height} role="img" aria-label={ariaLabel} onMouseLeave={() => setHover(undefined)}>
           {ticks.map((t) => (
             <g key={t}>
@@ -155,7 +155,7 @@ export function Columns({ data, height = 220, unit = '', ariaLabel, marker }: { 
               </text>
             </g>
           )}
-                    {data.map((d, i) => {
+          {data.map((d, i) => {
             const h = grown ? (d.value / niceMax) * ih : 0;
             const x = pad.l + i * slot + (slot - bw) / 2;
             const r = Math.min(4, bw / 2, h);
@@ -190,6 +190,7 @@ export function Columns({ data, height = 220, unit = '', ariaLabel, marker }: { 
     </div>
   );
 }
+
 /** Горизонтальные полосы со значением в процентах (только внутри карточек). */
 export function Bars({ rows, max = 100, format = (v) => fmtPct(v) }: { rows: { label: ReactNode; value: number; aside?: ReactNode; tone?: 'muted' | 'normal' }[]; max?: number; format?: (v: number) => string }) {
   const pal = usePalette();
@@ -238,7 +239,7 @@ export function Line({ points, height = 120, ariaLabel, format }: { points: { x:
   const Y = (v: number) => pad.t + ih - (v / max) * ih;
   const d = points.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ');
   const area = points.length ? `${d} L${X(points.length - 1)},${pad.t + ih} L${X(0)},${pad.t + ih} Z` : '';
-    return (
+  return (
     <div ref={ref} style={{ position: 'relative' }}>
       <svg
         width={width}
