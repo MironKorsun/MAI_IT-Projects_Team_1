@@ -1,0 +1,15 @@
+/*
+ * Аудитория (ЭФ-07/08): дополнения к сетке bento.
+ * ≥1280 — «Код аудитории» занимает 4 колонки и два ряда, рядом «Старт экзамена» / «Без связи» на 8 колонок.
+ * 640–1279 — код и вторая карточка встают в один ряд по 6 колонок, без пустот в сетке.
+ */
+@media (max-width: 1279px) {
+  .bento > .room-code { grid-row: auto; }
+  .bento > .room-wide { grid-column: span 6; }
+}
+@media (max-width: 639px) {
+  .bento > .room-wide { grid-column: 1 / -1; }
+}
+
+/* длинный пункт меню («Не закончил по объективной причине») переносится на вторую строку */
+.menu-item.menu-item-wrap { height: auto; min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
