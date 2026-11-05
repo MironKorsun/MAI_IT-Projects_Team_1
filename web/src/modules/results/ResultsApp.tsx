@@ -319,3 +319,51 @@ function AppealForm({ r, onClose, onDone }: { r: MyResultDto; onClose: () => voi
       setBusy(false);
     }
   };
+    return (
+    <Modal
+      wide
+      title={`Апелляция · ${r.examTitle}`}
+      labelledBy="ap-h"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Отмена
+          </button>
+          <button type="button" className="btn btn-primary" onClick={submit} disabled={busy || !tasks.length || text.trim().length < 10}>
+            {busy ? <span className="spinner" /> : null}
+            Подать апелляцию
+          </button>
+        </>
+      }
+          >
+      <p className="small muted">Выберите задания, с баллами за которые вы не согласны, и опишите причину.</p>
+      <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <legend className="label" style={{ padding: 0, marginBottom: 8 }}>
+          Задания
+        </legend>
+        <div className="row wrap" style={{ '--gap': '8px' } as CSSProperties}>
+          {r.tasks.map((t) => (
+            <button
+              type="button"
+              key={t.number}
+              className="btn btn-choice num"
+              aria-pressed={tasks.includes(t.number)}
+              onClick={() => setTasks(tasks.includes(t.number) ? tasks.filter((x) => x !== t.number) : [...tasks, t.number])}
+            >
+              {t.number}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <label className="field">
+        <span className="label">Обоснование</span>
+        <textarea className="textarea" rows={6} maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Например: в задании 6 верно найдена ОДЗ и получен ответ, совпадающий с моим решением…" />
+        <span className="hint num" style={{ textAlign: 'right' }}>
+          {text.length} / 2000
+        </span>
+      </label>
+      {err ? <ErrorBox error={err} /> : null}
+    </Modal>
+  );
+}
