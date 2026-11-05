@@ -585,3 +585,219 @@ function SeatAction({ action, room, dicts, onClose, onDone }: { action: { kind: 
       ok: 'Акт оформлен, попытка завершена',
       valid: !!reason && desc.trim().length > 0,
     },
+    early: {
+      title: 'Завершение по объективной причине',
+      label: 'Завершить попытку',
+      second: true,
+      danger: true,
+      run: () => staffApi.post(`/attempts/${p.attemptId}/early-finish`, { reason }),
+      ok: 'Попытка завершена, ответы сохранены',
+      valid: !!reason,
+    },
+    relocate: {
+      title: 'Перевод на другое рабочее место',
+      label: 'Перевести',
+      second: false,
+      danger: false,
+      run: () => staffApi.post(`/attempts/${p.attemptId}/relocate`, { workstationId: target }),
+      ok: 'Участник переведён. Попросите его войти на новом месте.',
+      valid: !!target,
+    },
+  }[action.kind];
+  const reasons = action.kind === 'compensate' ? dicts.compensationReasons : action.kind === 'incident' ? dicts.incidentTypes : dicts.earlyFinishReasons;
+  return (
+    <ConfirmWithValidation
+      title={map.title}
+      label={map.label}
+      second={map.second}
+      danger={map.danger}
+      valid={map.valid}
+      fieldError={(e) => {
+        if (action.kind === 'compensate' && e instanceof ApiError && e.code === 'COMPENSATION_EXCEEDS_DOWNTIME') {
+          setAvail(Math.max(0, Number(e.problem.availableMinutes ?? 0)));
+          return true;
+        }
+        return false;
+      }}
+      onClose={onClose}
+      onConfirm={async () => {
+        await map.run();
+        onDone(map.ok);
+      }}
+      >
+      <p className="muted small">Участник: {who}</p>
+      {action.kind === 'compensate' && (
+        <label className="field">
+          <span className="label">Длительность, мин</span>
+          <input
+            className="input"
+            type="number"
+            min={1}
+            max={avail ?? 120}
+            value={minutes}
+            onChange={(e) => setMinutes(Number(e.target.value))}
+            aria-invalid={minutesInvalid || undefined}
+            aria-describedby="comp-hint"
+          />
+          {minutesInvalid ? (
+            <span id="comp-hint" className="error-text">
+              {avail ? `Простой по данным сервера: ${avail} мин. Укажите не больше.` : 'Простоя по данным сервера нет — компенсировать нечего.'}
+            </span>
+          ) : (
+            <span id="comp-hint" className="hint">
+              {avail !== undefined ? `Доступно по данным сервера: ${avail} мин.` : 'Не больше времени простоя по данным сервера.'}
+            </span>
+          )}
+        </label>
+         )}
+      {action.kind !== 'relocate' && (
+        <label className="field">
+          <span className="label">{action.kind === 'incident' ? 'Тип нарушения' : 'Причина'}</span>
+          <select className="select" value={reason} onChange={(e) => setReason(e.target.value)}>
+            <option value="">Выберите из справочника</option>
+            {reasons.map((r) => (
+              <option key={r}>{r}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {action.kind === 'incident' && (
+        <label className="field">
+          <span className="label">Описание</span>
+          <textarea className="textarea" rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} />
+        </label>
+      )}
+      {action.kind === 'relocate' && (
+        <label className="field">
+          <span className="label">Свободное проверенное место</span>
+          <select className="select" value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">Выберите место</option>
+            {free.map((s) => (
+              <option key={s.workstationId} value={s.workstationId}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          {!free.length && <span className="error-text">Нет свободных мест, прошедших проверку.</span>}
+        </label>
+      )}
+    </ConfirmWithValidation>
+  );
+}
+
+function ConfirmWithValidation({
+  title,
+  label,
+  second,
+  danger,
+  valid,
+  fieldError,
+  onClose,
+  onConfirm,
+  children,
+}: {
+  title: string;
+  label: string;
+  second: boolean;
+  danger: boolean;
+  valid: boolean;
+  /** Ошибка относится к полю формы и показана у поля — общий блок ошибки не нужен. */
+  fieldError?: (e: unknown) => boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+  children: React.ReactNode;
+  }) {
+  const [step, setStep] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<unknown>();
+  return (
+    <Modal
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Отмена
+          </button>
+          <button
+            type="button"
+            className={`btn ${danger ? 'btn-danger solid' : 'btn-primary'}`}
+            disabled={!valid || busy}
+            onClick={async () => {
+              if (second && step === 1) return setStep(2);
+              setBusy(true);
+              try {
+                await onConfirm();
+                onClose();
+              } catch (e) {
+                setErr(fieldError?.(e) ? undefined : e);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? <span className="spinner" /> : null}
+            {second && step === 1 ? 'Продолжить' : label}
+          </button>
+        </>
+           }
+    >
+      {children}
+      {step === 2 && (
+        <div className="notice warn top fade-in" role="alert">
+          <Icon name="alert" className="lead-icon" size={20} />
+          <span className="grow">Действие необратимо. Подтвердите ещё раз.</span>
+        </div>
+      )}
+      {err ? <ErrorBox error={err} /> : null}
+    </Modal>
+  );
+}
+
+function MessageDialog({ roomId, onClose, onSent }: { roomId: string; onClose: () => void; onSent: () => void }) {
+  const [text, setText] = useState('');
+  return (
+    <ConfirmWithValidation title="Сообщение участникам аудитории" label="Отправить" second={false} danger={false} valid={text.trim().length > 0} onClose={onClose} onConfirm={async () => {
+      await staffApi.post(`/rooms/${roomId}/messages`, { text }, { idempotencyKey: uuid() });
+      onSent();
+    }}>
+      <p className="small muted">Сообщение появится в области уведомлений участников и не перекроет поле ответа.</p>
+      <textarea className="textarea" rows={3} maxLength={500} value={text} onChange={(e) => setText(e.target.value)} placeholder="Например: до окончания экзамена 30 минут" aria-label="Текст сообщения" autoFocus />
+    </ConfirmWithValidation>
+  );
+}
+
+function LinksDialog({ room, onClose }: { room: RoomDto; onClose: () => void }) {
+  const toast = useToast();
+  return (
+    <Modal title="Ссылки рабочих мест" onClose={onClose} wide>
+      <p className="small muted">Технический специалист открывает ссылку на каждом компьютере аудитории до начала экзамена. Ссылка содержит секрет рабочего места.</p>
+      <div className="stack" style={{ '--gap': '8px' } as React.CSSProperties}>
+        {room.seats.map((s) => (
+          <div key={s.workstationId} className="tile row between" style={{ padding: '8px 8px 8px 16px' }}>
+            <span className="small strong" style={{ width: 90, flex: 'none' }}>
+              {s.label}
+            </span>
+            <span className="mono tiny muted grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {location.origin}
+              {s.link}
+            </span>
+            <div className="row" style={{ '--gap': '8px' } as React.CSSProperties}>
+              <button type="button" className="btn btn-sm" onClick={() =>
+                  copyText(location.origin + s.link).then(
+                    () => toast('Ссылка скопирована', 'ok'),
+                    () => toast('Не удалось скопировать ссылку', 'bad'),
+                  )
+                }>
+                <Icon name="copy" /> Копировать
+              </button>
+              <a className="btn btn-sm" href={s.link} target="_blank" rel="noreferrer">
+                Открыть
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  );
+}
