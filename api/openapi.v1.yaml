@@ -1,0 +1,868 @@
+openapi: 3.1.0
+info:
+  title: ВП ТС ЕГЭ — API серверной части
+  version: 1.0.0
+  description: |
+    Контракты ТЗ КЧ (раздел 7) и ТЗ СЧ (раздел 7). JSON camelCase, ISO 8601 UTC, ошибки — application/problem+json (RFC 9457).
+    Канал событий — wss://…/ws/v1: сообщение auth с маркером, ping каждые 25 с, события room.started, attempt.timeChanged,
+    attempt.terminated, room.message, participant.statusChanged, integrity.event, workstation.checked, auth.lockout.
+servers:
+  - url: /api/v1
+paths:
+  /auth/participant/login:
+    post:
+      tags: [Доступ]
+      summary: "Вход участника по идентификатору и коду аудитории (FR-01, FR-02)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ParticipantLogin' }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /auth/staff/login:
+    post:
+      tags: [Доступ]
+      summary: "Вход персонала (FR-02, FR-03)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StaffLogin' }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /auth/results/login:
+    post:
+      tags: [Доступ]
+      summary: "Вход участника вне ППЭ для М6 (учебное допущение: код + PIN)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /auth/refresh:
+    post:
+      tags: [Доступ]
+      summary: "Ротация маркеров по cookie обновления (FR-04)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /auth/logout:
+    post:
+      tags: [Доступ]
+      summary: "Выход, отзыв сеанса (FR-04, FR-05)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /me:
+    get:
+      tags: [Доступ]
+      summary: "Профиль и роли без реквизитов документов (FR-08)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /workstations/self:
+    get:
+      tags: [Рабочее место]
+      summary: "Сведения о рабочем месте по секрету"
+      security: [{ workstationSecret: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /workstations/{id}/check:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Рабочее место]
+      summary: "Результат проверки рабочего места (FR-09)"
+      security: [{ workstationSecret: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/state:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Попытки]
+      summary: "Состояние попытки, serverTime, ответы с версиями (FR-10)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /rooms/{id}/kim-package:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [КИМ]
+      summary: "Зашифрованный пакет вариантов аудитории, Range (FR-30)"
+      security: [{ workstationSecret: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/kim-key:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [КИМ]
+      summary: "Ключ варианта после старта аудитории (FR-31)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/ready:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Попытки]
+      summary: "Подтверждение готовности, фиксация T0 (FR-13)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/answers/{taskId}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: taskId, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Попытки]
+      summary: "Сохранение ответа: seq, If-Match, окно приёма (FR-14–FR-17)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnswerPut' }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/notes/{taskId}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: taskId, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Попытки]
+      summary: "Черновик участника (FR-18)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/ui:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Попытки]
+      summary: "Отметки для возврата и последнее задание"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/events:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Попытки]
+      summary: "Пакет событий целостности, ≤ 50 (FR-19)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/finish:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Попытки]
+      summary: "Завершение попытки (FR-20)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /rooms:
+    get:
+      tags: [Аудитория]
+      summary: "Аудитории, доступные роли"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /rooms/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Аудитория]
+      summary: "Места, участники, состояния (FR-27)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /rooms/{id}/access-code:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Аудитория]
+      summary: "Выпуск кода аудитории (FR-11)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /rooms/{id}/start:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Аудитория]
+      summary: "Старт экзамена (FR-12)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /rooms/{id}/messages:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Аудитория]
+      summary: "Сообщение участникам (FR-26)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/time-compensation:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Аудитория]
+      summary: "Компенсация времени простоя (FR-22)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/incidents:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Аудитория]
+      summary: "Акт о нарушении (FR-23)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/early-finish:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Аудитория]
+      summary: "Завершение по объективной причине (FR-24)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /attempts/{id}/relocate:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Аудитория]
+      summary: "Перевод на другое рабочее место (FR-25)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /dictionaries:
+    get:
+      tags: [Аудитория]
+      summary: "Справочники нарушений и причин"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /exams:
+    get:
+      tags: [Администрирование]
+      summary: "Справочник экзаменов и вариантов"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /ppes:
+    get:
+      tags: [Администрирование]
+      summary: "ППЭ"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /exam-sessions:
+    get:
+      tags: [Администрирование]
+      summary: "Список сессий и статусы результатов (FR-36)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Администрирование]
+      summary: "Создание сессии (FR-43)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /exam-sessions/{id}/allocation/validate:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Администрирование]
+      summary: "Проверка CSV распределения (FR-44)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /exam-sessions/{id}/allocation:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Администрирование]
+      summary: "Применение распределения (FR-45)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /staff:
+    get:
+      tags: [Администрирование]
+      summary: "Учётные записи персонала"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Администрирование]
+      summary: "Создание учётной записи (FR-46)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [Администрирование]
+      summary: "Роли и блокировка (FR-07, FR-46)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /participants:
+    get:
+      tags: [Администрирование]
+      summary: "Поиск участников (первые 100 совпадений и общее число)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - { name: q, in: query, schema: { type: string }, description: "Код участника или фамилия" }
+        - { name: cond, in: query, schema: { type: string, enum: [any, none] }, description: "С особыми условиями / без них" }
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  items: { type: array, items: { type: object } }
+        default: { $ref: '#/components/responses/Problem' }
+  /participants/{id}/special-conditions:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Администрирование]
+      summary: "Особые условия (FR-47)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /exam-sessions/{id}/results/publish:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Администрирование]
+      summary: "Публикация результатов (FR-48)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /exam-sessions/{id}/results/export:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Данные]
+      summary: "Выгрузка CSV с контрольной суммой (FR-53)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/imports:
+    post:
+      tags: [КИМ]
+      summary: "Импорт варианта КИМ (FR-28)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/validate:
+    post:
+      tags: [КИМ]
+      summary: "Проверка варианта без импорта"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/variants/{variantId}/tasks/{taskId}/key:
+    parameters:
+      - { name: variantId, in: path, required: true, schema: { type: string } }
+      - { name: taskId, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [КИМ]
+      summary: "Исправление эталона и перепроверка (FR-33)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /scales:
+    get:
+      tags: [Оценивание]
+      summary: "Загруженные шкалы"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /subjects/{code}/scales/{year}:
+    parameters:
+      - { name: code, in: path, required: true, schema: { type: string } }
+      - { name: year, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Оценивание]
+      summary: "Загрузка шкалы перевода (FR-34)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /appeals:
+    get:
+      tags: [Администрирование]
+      summary: "Апелляции"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /appeals/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Администрирование]
+      summary: "Статус апелляции (FR-50)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /monitoring/summary:
+    get:
+      tags: [Мониторинг]
+      summary: "Сводные показатели по ППЭ (FR-42)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /audit-events:
+    get:
+      tags: [Мониторинг]
+      summary: "Журнал событий, курсорная выборка (FR-41)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /audit-events/export:
+    get:
+      tags: [Мониторинг]
+      summary: "Выгрузка журнала CSV"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /audit-events/verify:
+    get:
+      tags: [Мониторинг]
+      summary: "Проверка цепочки хэшей журнала (NFR-25)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /me/results:
+    get:
+      tags: [Результаты]
+      summary: "Опубликованные результаты участника (FR-37)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /me/appeals:
+    get:
+      tags: [Результаты]
+      summary: "Апелляции участника (FR-50)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Результаты]
+      summary: "Подача апелляции (FR-49)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppealPost' }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /analytics/overview:
+    get:
+      tags: [Аналитика]
+      summary: "Статистика, аномалии, контроль качества (ТЗ АО A2, A3, A6)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /analytics/export:
+    get:
+      tags: [Аналитика]
+      summary: "Выгрузки task_statistics, anomaly_flags, regions"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /analytics/scales/check:
+    post:
+      tags: [Аналитика]
+      summary: "Проверка шкалы без загрузки (ТЗ АО FR-02)"
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /telemetry:
+    post:
+      tags: [Данные]
+      summary: "Пакет RUM-метрик (FR-54)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /time:
+    get:
+      tags: [Данные]
+      summary: "Серверное время"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT (EdDSA, 15 мин) }
+    workstationSecret: { type: apiKey, in: header, name: X-Workstation-Secret }
+  parameters:
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+    IfMatch: { name: If-Match, in: header, required: false, schema: { type: string, example: '"v4"' } }
+    RequestId: { name: X-Request-Id, in: header, required: false, schema: { type: string, format: uuid } }
+  responses:
+    Problem:
+      description: Ошибка в формате RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        code:
+          type: string
+          enum: [VALIDATION_FAILED, IDEMPOTENCY_KEY_REQUIRED, INVALID_CREDENTIALS, TOKEN_INVALID, FORBIDDEN, AUTH_LOCKED, KIM_NOT_AVAILABLE, NOT_FOUND, INVALID_STATE, ATTEMPT_CLOSED, ROOM_ALREADY_STARTED, RESULTS_NOT_APPROVED, APPEAL_WINDOW_CLOSED, VERSION_MISMATCH, ROLE_CONFLICT, COMPENSATION_EXCEEDS_DOWNTIME, IDEMPOTENCY_KEY_REUSED, IMPORT_INVALID, RATE_LIMITED, OVERLOADED, INTERNAL_ERROR]
+        requestId: { type: string }
+        errors:
+          type: array
+          items: { type: object, properties: { pointer: { type: string }, detail: { type: string } } }
+    ParticipantLogin:
+      type: object
+      additionalProperties: false
+      required: [participantCode, accessCode, workstationSecret]
+      properties:
+        participantCode: { type: string, maxLength: 32 }
+        accessCode: { type: string, pattern: '^\\d{6}$' }
+        workstationSecret: { type: string }
+    StaffLogin:
+      type: object
+      additionalProperties: false
+      required: [login, password]
+      properties: { login: { type: string }, password: { type: string, minLength: 12 } }
+    AnswerPut:
+      type: object
+      additionalProperties: false
+      required: [kind, value, seq, changedAtServerClock]
+      properties:
+        kind: { type: string, enum: [short] }
+        value: { type: string, maxLength: 50 }
+        seq: { type: integer, minimum: 1, description: Монотонный номер изменения в пределах попытки }
+        changedAtServerClock: { type: string, format: date-time }
+        final: { type: boolean }
+    AppealPost:
+      type: object
+      additionalProperties: false
+      required: [sessionId, taskNumbers, text]
+      properties:
+        sessionId: { type: string }
+        taskNumbers: { type: array, items: { type: integer } }
+        text: { type: string, minLength: 10, maxLength: 2000 }

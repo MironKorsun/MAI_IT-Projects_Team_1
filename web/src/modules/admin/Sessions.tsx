@@ -41,7 +41,7 @@ export default function Sessions() {
         }
       />
       {error ? <ErrorBox error={error} onRetry={reload} /> : null}
-            <section className="glass table-panel reveal" style={{ '--i': 1, marginTop: error ? 12 : undefined } as React.CSSProperties} aria-label="Экзаменационные сессии">
+      <section className="glass table-panel reveal" style={{ '--i': 1, marginTop: error ? 12 : undefined } as React.CSSProperties} aria-label="Экзаменационные сессии">
         {!data && !error && <Skeleton h={240} />}
         {data && !data.length && <Empty>Сессий пока нет.</Empty>}
         {data && data.length > 0 && (
@@ -59,7 +59,7 @@ export default function Sessions() {
                   </th>
                 </tr>
               </thead>
-                            <tbody>
+              <tbody>
                 {data.map((s) => {
                   const url = `/staff/admin/sessions/${s.id}`;
                   return (
@@ -81,7 +81,7 @@ export default function Sessions() {
                       <td className="r" data-label="Аудиторий">
                         {s.rooms.length}
                       </td>
-                                            <td className="r" data-label="Участников">
+                      <td className="r" data-label="Участников">
                         {s.attempts}
                       </td>
                       <td data-label="Статус">
@@ -157,7 +157,7 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
       if (e instanceof ApiError) setErrors(e.fieldErrors());
       setErr(e);
     }
-      };
+  };
   return (
     <Modal
       title="Новая экзаменационная сессия"
@@ -173,7 +173,7 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
           </button>
         </>
       }
-          >
+    >
       <div className="form-grid">
         <label className="field full">
           <span className="label">Экзамен</span>
@@ -193,7 +193,7 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
           <span className="label">Начало (местное)</span>
           <input className="input" type="time" value={f.startLocal} onChange={(e) => setF({ ...f, startLocal: e.target.value })} />
         </label>
-                <fieldset className="field full" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <fieldset className="field full" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <legend className="label" style={{ padding: 0, marginBottom: 4 }}>
             Варианты КИМ
           </legend>
@@ -211,7 +211,7 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
           )}
           {errors.variantIds && <span className="error-text">{errors.variantIds}</span>}
         </fieldset>
-                <label className="field">
+        <label className="field">
           <span className="label">ППЭ</span>
           <select className="select" value={f.ppeId} onChange={(e) => setF({ ...f, ppeId: e.target.value })} aria-invalid={!!errors.rooms}>
             <option value="">Выберите ППЭ</option>
@@ -235,7 +235,7 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
                 </option>
               ))}
           </select>
-                  </label>
+        </label>
         <label className="field">
           <span className="label">Аудитория</span>
           <input className="input" value={f.number} onChange={(e) => setF({ ...f, number: e.target.value })} />
