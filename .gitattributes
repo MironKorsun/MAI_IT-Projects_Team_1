@@ -4,3 +4,7 @@
 Dockerfile text eol=lf
 docker-compose.yml text eol=lf
 *.ps1 text eol=crlf
+# Эти учебные материалы проверяются по байтам из банка и манифеста.
+kim/math-profile-bank/*.json text eol=lf
+kim/math-profile-bank/*.md text eol=lf
+kim/math-profile-bank/media/*.svg -text
