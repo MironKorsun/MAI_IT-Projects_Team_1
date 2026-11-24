@@ -18,7 +18,7 @@ test('PostgreSQL: миграции, запись, чтение, фиксация
   const pool = store.connect(url);
   try {
     await pool.query('DROP SCHEMA IF EXISTS analytics CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public');
-    assert.deepEqual(await store.migrate(), ['001_init.sql']);
+    assert.deepEqual(await store.migrate(), ['001_init.sql', '002_kim_packages.sql']);
     assert.deepEqual(await store.migrate(), [], 'повторный запуск миграций ничего не меняет');
 
     // Состав столбцов модели совпадает со схемой
@@ -33,6 +33,12 @@ test('PostgreSQL: миграции, запись, чтение, фиксация
     await dbm.loadDb();
     const password = 'test-staff-password-2026';
     seedStaging({ staffPassword: password, participantPin: '123456', accessCode: '482915' });
+    const { buildBankSelection, kimBank } = await import('./kim/bank');
+    const { readKimArchive } = await import('./kim/package');
+    const { buildVariant } = await import('./kim/loader');
+    const pkg = await readKimArchive(buildBankSelection(kimBank().info.demo).archive());
+    const imported = buildVariant(pkg.variant, pkg.references, pkg);
+    dbm.db.variants.push(imported);
     await dbm.commitNow();
     const before = canon(dbm.db);
     assert.equal(await dbm.loadDb(), true);

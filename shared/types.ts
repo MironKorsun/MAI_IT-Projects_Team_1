@@ -58,6 +58,7 @@ export interface TaskView {
   question?: string;
   wordLimit?: number;
   image?: string;
+  imageData?: string;
   referenceIds?: string[];
 }
 
@@ -65,7 +66,7 @@ export interface ReferenceMaterial {
   id: string;
   kind: 'formula' | 'table' | 'constant';
   title: string;
-  latex?: string;
+  latex?: string | string[];
   rows?: string[][];
 }
 
@@ -108,6 +109,7 @@ export interface AttemptStateDto {
   variantId?: string;
   messages: { id: string; text: string; at: string }[];
   roomStarted: boolean;
+  instruction?: string;
   terminationMessage?: string;
   finishedAt?: string;
 }
@@ -175,6 +177,7 @@ export interface ExamSessionDto {
   resultsStatus: ResultsStatus;
   rooms: { id: string; number: string; ppeCode: string; participants: number }[];
   variants: number;
+  scaleVersion?: string;
   attempts: number;
   publishedAt?: string;
   appealWindow?: { from: string; to: string };

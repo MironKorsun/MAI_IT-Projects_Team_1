@@ -20,6 +20,7 @@ const Sessions = lazy(() => import('./modules/admin/Sessions'));
 const SessionDetail = lazy(() => import('./modules/admin/SessionDetail'));
 const Participants = lazy(() => import('./modules/admin/Participants'));
 const StaffUsers = lazy(() => import('./modules/admin/StaffUsers'));
+const KimEditor = lazy(() => import('./modules/admin/KimEditor'));
 const KimPage = lazy(() => import('./modules/admin/KimPage'));
 const Appeals = lazy(() => import('./modules/admin/Appeals'));
 const MonitorDashboard = lazy(() => import('./modules/monitor/MonitorDashboard'));
@@ -51,6 +52,7 @@ function Staff() {
           <Route path="admin/sessions/:id" element={<RequireStaff roles={['admin']}><SessionDetail /></RequireStaff>} />
           <Route path="admin/participants" element={<RequireStaff roles={['admin']}><Participants /></RequireStaff>} />
           <Route path="admin/staff" element={<RequireStaff roles={['admin']}><StaffUsers /></RequireStaff>} />
+          <Route path="kim-editor" element={<RequireStaff roles={['admin', 'observer']}><KimEditor /></RequireStaff>} />
           <Route path="admin/kim" element={<RequireStaff roles={['admin']}><KimPage /></RequireStaff>} />
           <Route path="admin/appeals" element={<RequireStaff roles={['admin']}><Appeals /></RequireStaff>} />
           <Route path="monitor" element={<RequireStaff roles={['observer', 'admin']}><MonitorDashboard /></RequireStaff>} />

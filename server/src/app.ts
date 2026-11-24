@@ -14,6 +14,7 @@ import authRoutes from './routes/auth';
 import examRoutes from './routes/exam';
 import roomRoutes from './routes/rooms';
 import adminRoutes from './routes/admin';
+import kimRoutes from './routes/kim';
 import monitoringRoutes from './routes/monitoring';
 import resultsRoutes from './routes/results';
 import analyticsRoutes from './routes/analytics';
@@ -110,6 +111,7 @@ export async function buildApp() {
       await api.register(examRoutes);
       await api.register(roomRoutes);
       await api.register(adminRoutes);
+      await api.register(kimRoutes);
       await api.register(monitoringRoutes);
       await api.register(resultsRoutes);
       await api.register(analyticsRoutes);

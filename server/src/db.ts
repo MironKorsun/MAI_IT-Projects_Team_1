@@ -149,6 +149,9 @@ export interface KimVariant {
   keys: StoredTask[];
   importedAt: string;
   checksum: string;
+  packageDigest?: string;
+  packageVersion?: string;
+  instruction?: string;
 }
 
 export interface Result {

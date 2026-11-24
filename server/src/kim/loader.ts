@@ -29,12 +29,12 @@ export interface RawTask {
 
 export interface RawVariant { variant: number; examCode: string; title: string; tasks: RawTask[] }
 
-interface RawReference {
+export interface RawReference {
   id: string;
   topic_code: string;
   kind: 'formula' | 'table' | 'constant';
   title: string;
-  content: { latex?: string; rows?: string[][] };
+  content: { latex?: string | string[]; rows?: string[][] };
   task_ids: string[];
 }
 
@@ -63,10 +63,13 @@ export function validateVariant(raw: unknown): { pointer: string; detail: string
   }
   const variant = raw as RawVariant;
   const numbers = new Set<number>();
+  const ids = new Set<string>();
   variant.tasks.forEach((t, i) => {
     const p = `/tasks/${i}`;
     if (numbers.has(t.number)) errors.push({ pointer: `${p}/number`, detail: `Повтор номера задания ${t.number}` });
     numbers.add(t.number);
+    if (ids.has(t.id)) errors.push({ pointer: `${p}/id`, detail: `Идентификатор задания ${t.id} повторяется` });
+    ids.add(t.id);
     if (t.type === 'short') {
       for (const c of t.answer.correct ?? []) {
         const okNum = /^-?\d+([.,]\d+)?$/.test(c);
@@ -77,14 +80,17 @@ export function validateVariant(raw: unknown): { pointer: string; detail: string
     // Платформа проводит экзамен только с заданиями с кратким ответом, проверяемыми автоматически (ТЗ СЧ 3.1, 3.4 п. 1)
     if (t.type !== 'short' || t.part !== 1)
       errors.push({ pointer: `${p}/type`, detail: `Задание ${t.number}: поддерживаются только задания части 1 с кратким ответом` });
-    const stripped = t.content.condition.replace(ALLOWED_TAGS, '');
-    if (/<[a-z/!]/i.test(stripped))
-      errors.push({ pointer: `${p}/content/condition`, detail: 'Условие содержит недопустимую HTML-разметку' });
+    const { condition, question } = t.content;
+    for (const [field, value] of Object.entries({ condition, question })) {
+      if (value && /<[a-z/!]/i.test(value.replace(ALLOWED_TAGS, '')))
+        errors.push({ pointer: `${p}/content/${field}`, detail: 'Текст задания содержит недопустимую HTML-разметку' });
+    }
   });
   return errors;
 }
 
-function toTaskView(t: RawTask): TaskView {
+export function toTaskView(t: RawTask, images?: ReadonlyMap<string, Buffer>): TaskView {
+  const image = t.content.image ? images?.get(t.content.image) : undefined;
   return {
     id: t.id,
     number: t.number,
@@ -97,6 +103,7 @@ function toTaskView(t: RawTask): TaskView {
     condition: t.content.condition,
     question: t.content.question,
     image: t.content.image,
+    imageData: image?.toString('base64'),
     referenceIds: t.reference_ids,
   };
 }
@@ -121,18 +128,29 @@ function toStoredTask(t: RawTask): StoredTask {
 
 export function loadReferences(dir: string): ReferenceMaterial[] {
   const raw = JSON.parse(readFileSync(resolve(dir, 'reference_materials/references.json'), 'utf8')) as RawReference[];
-  return raw.map((r) => ({ id: r.id, kind: r.kind, title: r.title, latex: r.content.latex, rows: r.content.rows }));
+  return raw.map(toReference);
+}
+
+export function toReference(r: RawReference): ReferenceMaterial {
+  return { id: r.id, kind: r.kind, title: r.title, latex: r.content.latex, rows: r.content.rows };
+}
+
+export interface PackageMaterials {
+  images: ReadonlyMap<string, Buffer>;
+  instruction: string;
+  digest: string;
+  version: string;
 }
 
 /** Импорт варианта: открытый текст шифруется ключом варианта, эталоны отделяются (ТЗ СЧ FR-28, FR-29, NFR-21). */
-export function buildVariant(raw: RawVariant, references: ReferenceMaterial[]): KimVariant {
+export function buildVariant(raw: RawVariant, references: ReferenceMaterial[], packageMaterials?: PackageMaterials): KimVariant {
   const id = uuid();
   const content: VariantContent = {
     variantId: id,
     number: raw.variant,
     examCode: raw.examCode,
     title: raw.title,
-    tasks: raw.tasks.map(toTaskView).sort((a, b) => a.number - b.number),
+    tasks: raw.tasks.map((task) => toTaskView(task, packageMaterials?.images)).sort((a, b) => a.number - b.number),
     references: references.filter((r) => raw.tasks.some((t) => t.reference_ids?.includes(r.id))),
   };
   const plain = Buffer.from(JSON.stringify(content), 'utf8');
@@ -147,6 +165,11 @@ export function buildVariant(raw: RawVariant, references: ReferenceMaterial[]): 
     keys: raw.tasks.map(toStoredTask).sort((a, b) => a.number - b.number),
     importedAt: nowIso(),
     checksum: sha256(plain),
+    ...(packageMaterials && {
+      packageDigest: packageMaterials.digest,
+      packageVersion: packageMaterials.version,
+      instruction: packageMaterials.instruction,
+    }),
   };
 }
 

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { db, byId, type Result } from '../db';
 import { requireStaff } from '../auth';
 import { audit } from '../audit';
-import { scaleFor, validateScale } from '../grading';
+import { sessionScale, scaleFor, validateScale } from '../grading';
 import { EXAMS } from '../exams';
 import { sha256 } from '../util';
 
@@ -61,7 +61,7 @@ export function computeAnalytics(sessionId?: string) {
   const { sessions, results } = dataset(sessionId);
   const examCode = sessions[0]?.examCode ?? 'math-profile';
   const year = Number(sessions[0]?.date.slice(0, 4) ?? 2026);
-  const scale = scaleFor(examCode, year);
+  const scale = sessions.length === 1 ? sessionScale(sessions[0]) : scaleFor(examCode, year);
   const scores = results.map(score);
   const threshold = scale?.threshold ?? 27;
 
@@ -159,7 +159,7 @@ export function computeAnalytics(sessionId?: string) {
   if (prev && scores.length && Math.abs(m - prev.mean) > 10)
     anomalies.push({ id: 'dist-shift', type: 'Распределение', object: EXAMS[examCode]?.title ?? examCode, metric: 'Сдвиг среднего к прошлому году', value: ru(m - prev.mean), threshold: '±10 баллов', severity: 'warning', decision: 'Проверить шкалу и контрольную группу' });
 
-  const thresholdRate = scores.length ? scores.filter((s) => s >= threshold).length / scores.length : 0;
+  const thresholdRate = scores.length ? results.filter(r => r.passed).length / scores.length : 0;
   const datasetVersion = sha256(results.map((r) => `${r.attemptId}:${r.primaryScore}:${r.scaleVersion}`).sort().join('|')).slice(0, 12);
   return {
     meta: {
@@ -169,7 +169,7 @@ export function computeAnalytics(sessionId?: string) {
       sessions: sessions.map((s) => ({ id: s.id, date: s.date, status: s.resultsStatus })),
       datasetVersion,
       methodology: METHODOLOGY_VERSION,
-      scaleVersion: scale?.version ?? '—',
+      scaleVersion: [...new Set(results.map(r => r.scaleVersion))].sort().join(', ') || scale?.version || '—',
       calculatedAt: new Date().toISOString(),
       thresholds: THRESHOLDS,
     },

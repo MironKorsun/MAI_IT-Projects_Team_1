@@ -110,6 +110,7 @@ export function attemptStateDto(a: Attempt): AttemptStateDto {
     variantId: a.variantId,
     messages: room.messages,
     roomStarted: !!room.startedAt,
+    instruction: variant?.instruction,
     terminationMessage: a.terminationMessage,
     finishedAt: a.finishedAt,
   };
@@ -137,6 +138,7 @@ export function sessionDto(s: ExamSession): ExamSessionDto {
       };
     }),
     variants: s.variantIds.length,
+    scaleVersion: s.scaleVersion,
     attempts: db.attempts.filter((a) => a.sessionId === s.id).length,
     publishedAt: s.publishedAt,
     appealWindow: s.appealWindow,

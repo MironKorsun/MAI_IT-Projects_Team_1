@@ -3,7 +3,8 @@ import type { TaskView } from '../../../../shared/types';
 import { filterShortInput, FORMAT_HINT } from '../../../../shared/format';
 import { Icon } from '../../components/Icon';
 import { Brand, Modal } from '../../components/ui';
-import { Formula, SafeHtml } from '../../lib/richtext';
+import { Formula } from '../../lib/richtext';
+import { TaskContent } from './TaskContent';
 import { fmtDuration, fmtTime, plural } from '../../lib/format';
 import type { ExamEngine } from './useExam';
 import './exam.css';
@@ -163,7 +164,7 @@ export function TaskScreen({ exam }: { exam: ExamEngine }) {
                 <div className="h3" style={{ marginBottom: 8 }}>
                   {r.title}
                 </div>
-                {r.latex && <Formula src={r.latex} display />}
+                {r.latex && (Array.isArray(r.latex) ? r.latex : [r.latex]).map((latex, i) => <Formula key={i} src={latex} display />)}
                 {r.rows && (
                   <table className="table">
                     <thead>
@@ -355,7 +356,7 @@ function TaskCard({
       </div>
 
       <div className="kim-text no-select" data-kim>
-        <SafeHtml html={task.condition} />
+        <TaskContent task={task} />
       </div>
 
       <div className="answer-zone">

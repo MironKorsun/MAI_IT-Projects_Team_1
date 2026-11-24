@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { sessionScale } from '../grading';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { db, type ExamSession } from '../db';
@@ -65,7 +66,7 @@ export default async function publicRoutes(app: FastifyInstance) {
     const s = pickSession(db.sessions);
     const variant = db.variants.find((v) => v.examCode === EXAM_CODE && (!s || s.variantIds.includes(v.id))) ?? db.variants.find((v) => v.examCode === EXAM_CODE);
     // Порог — по последней загруженной тестовой шкале экзамена (самый поздний год)
-    const scale = db.scales
+    const scale = (s && sessionScale(s)) ?? db.scales
       .filter((x) => x.examCode === EXAM_CODE && x.kind === 'test')
       .sort((a, b) => a.year - b.year || a.loadedAt.localeCompare(b.loadedAt))
       .at(-1);
@@ -74,7 +75,7 @@ export default async function publicRoutes(app: FastifyInstance) {
       exam: {
         title: EXAMS[EXAM_CODE]?.title ?? 'Математика (профильный уровень)',
         year,
-        kimVersion: m.version ?? '—',
+        kimVersion: variant?.packageVersion ?? m.version ?? '—',
         tasksCount: variant?.keys.length || 12,
         durationMin: m.durationMin ?? EXAMS[EXAM_CODE]?.durationMin ?? 235,
         extraTimeMin: EXTRA_TIME_MIN,

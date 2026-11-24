@@ -260,7 +260,7 @@ function BriefScreen({ exam }: { exam: ExamEngine }) {
             </span>
           </div>
           <div className="brief-body">
-            <Markdown text={instruction} skipTitle />
+            <Markdown text={s.instruction ?? instruction} skipTitle />
           </div>
         </section>
         <aside className="brief-aside">
