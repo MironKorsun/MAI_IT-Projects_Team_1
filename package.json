@@ -10,6 +10,7 @@
     "start": "npm run start -w server",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
     "test": "npm run test -w server && npm run test -w web",
+    "kim:demo": "tsx server/src/kim/export-demo.ts",
     "kim:validate": "npm run kim:validate -w server"
   },
   "devDependencies": {

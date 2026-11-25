@@ -4,7 +4,7 @@ import { db, byId, persist } from '../db';
 import { ApiError, invalid } from '../errors';
 import { audit } from '../audit';
 import { requireKind } from '../auth';
-import { scaleFor } from '../grading';
+import { sessionScale } from '../grading';
 import { sessionTitle } from '../views';
 import { nowIso, uuid } from '../util';
 
@@ -19,7 +19,7 @@ export default async function resultsRoutes(app: FastifyInstance) {
       .map((r) => {
         const s = byId(db.sessions, r.sessionId)!;
         const attempt = byId(db.attempts, r.attemptId)!;
-        const scale = scaleFor(s.examCode, Number(s.date.slice(0, 4)));
+        const scale = sessionScale(s);
         return {
           sessionId: s.id,
           examTitle: sessionTitle(s),

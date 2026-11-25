@@ -121,6 +121,7 @@ paths:
     get:
       tags: [Попытки]
       summary: "Состояние попытки, serverTime, ответы с версиями (FR-10)"
+      description: Для сессий с пакетом КИМ поле instruction содержит Markdown инструктажа.
       security: [{ bearer: [] }]
       parameters:
         - $ref: '#/components/parameters/RequestId'
@@ -439,7 +440,27 @@ paths:
       requestBody:
         content:
           application/json:
-            schema: { type: object }
+            schema:
+              type: object
+              additionalProperties: false
+              required: [examCode, date, startLocal, variantIds, proctoring, rooms]
+              properties:
+                examCode: { type: string }
+                date: { type: string, format: date }
+                startLocal: { type: string, example: '10:00' }
+                variantIds: { type: array, uniqueItems: true, items: { type: string } }
+                scaleVersion: { type: string, description: Обязательно для сессии с ZIP-пакетом. }
+                proctoring: { type: boolean }
+                rooms:
+                  type: array
+                  items:
+                    type: object
+                    required: [ppeId, number, seats]
+                    properties:
+                      ppeId: { type: string }
+                      number: { type: string }
+                      seats: { type: integer, minimum: 1, maximum: 25 }
+                      organizerIds: { type: array, items: { type: string } }
       responses:
         '200': { description: Успешно }
         default: { $ref: '#/components/responses/Problem' }
@@ -574,6 +595,133 @@ paths:
         - $ref: '#/components/parameters/RequestId'
       responses:
         '200': { description: Успешно }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/editor:
+    get:
+      tags: [КИМ]
+      summary: Предмет, кодификатор и план учебного варианта
+      description: Доступно администратору и наблюдателю.
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Метаданные банка, позиции и идентификаторы набора № 666 }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/editor/candidates/{position}:
+    get:
+      tags: [КИМ]
+      summary: Задания банка для позиции плана
+      description: Доступно администратору.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: position, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 12 } }
+        - { name: topic, in: query, schema: { type: string }, example: '7.1' }
+      responses:
+        '200':
+          description: Список подходящих заданий
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, topic, label]
+                  properties:
+                    id: { type: string }
+                    topic: { type: string }
+                    label: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/editor/preview:
+    post:
+      tags: [КИМ]
+      summary: Предпросмотр собранного варианта
+      description: Доступно администратору. Возвращает условия, чертежи, форматы ответов, справку и инструкцию.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KimSelection' }
+      responses:
+        '200': { description: Материалы предпросмотра }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/editor/export:
+    post:
+      tags: [КИМ]
+      summary: Валидация и выгрузка ZIP с компонентами JSON и SHA-256
+      description: Доступно администратору.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KimSelection' }
+      responses:
+        '200':
+          description: Пакет КИМ
+          headers:
+            X-Checksum-SHA256:
+              schema: { type: string, pattern: '^[0-9a-f]{64}$' }
+              description: SHA-256 байтов ZIP-файла
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/packages/validate:
+    post:
+      tags: [КИМ]
+      summary: Проверка ZIP-пакета и его контрольных сумм
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KimArchive' }
+      responses:
+        '200':
+          description: Протокол валидации
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [valid, errors, ms]
+                properties:
+                  valid: { type: boolean }
+                  ms: { type: integer, minimum: 0 }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        pointer: { type: string }
+                        detail: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
+  /kim/packages/imports:
+    post:
+      tags: [КИМ]
+      summary: Импорт проверенного и версионированного ZIP-пакета
+      description: При повторной отправке совпадающих компонентов возвращается прежний вариант.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KimArchive' }
+      responses:
+        '200':
+          description: Вариант КИМ
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, number, title, tasks, checksum, packageDigest, version, reused]
+                properties:
+                  id: { type: string, format: uuid }
+                  number: { type: integer }
+                  title: { type: string }
+                  tasks: { type: integer }
+                  checksum: { type: string }
+                  packageDigest: { type: string }
+                  version: { type: string }
+                  reused: { type: boolean }
         default: { $ref: '#/components/responses/Problem' }
   /kim/imports:
     post:
@@ -819,6 +967,30 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    KimSelection:
+      type: object
+      additionalProperties: false
+      required: [number, taskIds]
+      properties:
+        number: { type: integer, minimum: 1, maximum: 100000 }
+        version: { type: string, maxLength: 24, default: '1.0.0', example: '1.0.1' }
+        taskIds:
+          type: array
+          minItems: 12
+          maxItems: 12
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 64 }
+    KimArchive:
+      type: object
+      additionalProperties: false
+      required: [archive]
+      properties:
+        archive:
+          type: string
+          contentEncoding: base64
+          contentMediaType: application/zip
+          maxLength: 2796204
+          description: Пакет КИМ размером до 2 МиБ.
     Problem:
       type: object
       required: [type, title, status, code]

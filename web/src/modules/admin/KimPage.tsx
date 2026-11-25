@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { staffApi } from '../../lib/api';
 import { PageHead } from '../../components/Shell';
 import { ErrorBox, Skeleton, StatusBadge, useLoad, useToast } from '../../components/ui';
@@ -11,7 +12,7 @@ interface ExamDir {
   code: string;
   title: string;
   scale: 'test' | 'grade';
-  variants: { id: string; number: number; title: string; tasks: number; importedAt: string; checksum: string }[];
+  variants: { id: string; number: number; title: string; tasks: number; importedAt: string; checksum: string; packageVersion?: string; packageDigest?: string }[];
 }
 interface Scale {
   examCode: string;
@@ -28,6 +29,8 @@ export default function KimPage() {
   const exams = useLoad(() => staffApi.get<ExamDir[]>('/exams'));
   const scales = useLoad(() => staffApi.get<Scale[]>('/scales'));
   const [json, setJson] = useState('');
+  const [zip, setZip] = useState<File>();
+  const [busy, setBusy] = useState(false);
   const [check, setCheck] = useState<{ valid: boolean; errors: { pointer: string; detail: string }[]; ms: number }>();
   const [err, setErr] = useState<unknown>();
 
@@ -38,34 +41,71 @@ export default function KimPage() {
       return undefined;
     }
   };
+  async function payload() {
+    if (!zip) return parsed();
+    const bytes = new Uint8Array(await zip.arrayBuffer());
+    let text = '';
+    for (let i = 0; i < bytes.length; i += 8192) text += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    return { archive: btoa(text) };
+  }
   const validate = async () => {
     setErr(undefined);
-    const body = parsed();
-    if (!body) return setCheck({ valid: false, errors: [{ pointer: '/', detail: 'Файл не является корректным JSON' }], ms: 0 });
+    setBusy(true);
+    setCheck(undefined);
     try {
-      setCheck(await staffApi.post('/kim/validate', body));
+      const body = await payload();
+      if (!body) return setCheck({ valid: false, errors: [{ pointer: '/', detail: 'Файл не является корректным JSON' }], ms: 0 });
+      setCheck(await staffApi.post(zip ? '/kim/packages/validate' : '/kim/validate', body));
     } catch (e) {
       setErr(e);
+    } finally {
+      setBusy(false);
     }
   };
   const importIt = async () => {
+    setBusy(true);
+    setErr(undefined);
     try {
-      const r = await staffApi.post<{ title: string; tasks: number }>('/kim/imports', parsed());
-      toast(`Импортирован «${r.title}» (${r.tasks} ${plural(r.tasks, 'задание', 'задания', 'заданий')})`, 'ok');
+      const r = await staffApi.post<{ title: string; tasks: number; reused?: boolean }>(zip ? '/kim/packages/imports' : '/kim/imports', await payload());
+      toast(`${r.reused ? 'Уже импортирован' : 'Импортирован'} «${r.title}» (${r.tasks} ${plural(r.tasks, 'задание', 'задания', 'заданий')})`, 'ok');
       setJson('');
+      setZip(undefined);
       setCheck(undefined);
       await exams.reload();
     } catch (e) {
       setErr(e);
+    } finally {
+      setBusy(false);
     }
   };
+
+  async function choose(file?: File) {
+    if (!file) return;
+    setErr(undefined);
+    setCheck(undefined);
+    setZip(undefined);
+    setJson('');
+    setBusy(true);
+    try {
+      if (/\.zip$/i.test(file.name)) {
+        if (file.size > 2 * 1024 * 1024) throw new Error('Выберите ZIP размером до 2 МиБ');
+        setZip(file);
+      } else {
+        setJson(await file.text());
+      }
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const latest = (code: string) => scales.data?.filter((s) => s.examCode === code).at(-1);
   const total = exams.data?.reduce((n, e) => n + e.variants.length, 0) ?? 0;
 
   return (
     <>
-      <PageHead eyebrow="Администрирование" title="КИМ и шкалы перевода" subtitle="Варианты хранятся зашифрованными; эталоны ответов не передаются клиентам." />
+      <PageHead eyebrow="Администрирование" title="КИМ и шкалы перевода" subtitle="Импорт материалов и просмотр действующих шкал." actions={<Link to="/staff/kim-editor" className="btn">Редактор КИМ</Link>} />
       <div className="bento reveal" style={{ '--i': 1 } as React.CSSProperties}>
         <section className="glass card span-6 t-span-12" aria-labelledby="pkg-h">
           <div className="card-head">
@@ -93,11 +133,11 @@ export default function KimPage() {
                       <div className="stack" style={{ '--gap': '2px', minWidth: 0 } as React.CSSProperties}>
                         <span className="small strong">{v.title}</span>
                         <span className="tiny muted">
-                          {v.tasks} {plural(v.tasks, 'задание', 'задания', 'заданий')} · импорт {fmtDateTime(v.importedAt)}
+                          {v.tasks} {plural(v.tasks, 'задание', 'задания', 'заданий')}{v.packageVersion ? ` · версия ${v.packageVersion}` : ''} · импорт {fmtDateTime(v.importedAt)}
                         </span>
                       </div>
-                      <span className="tiny mono muted row" style={{ '--gap': '4px', flex: 'none' } as React.CSSProperties} title="SHA-256 открытого текста">
-                        <Icon name="lock" size={12} /> {v.checksum.slice(0, 12)}…
+                      <span className="tiny mono muted row" style={{ '--gap': '4px', flex: 'none' } as React.CSSProperties} title={v.packageDigest ? `SHA-256 состава пакета: ${v.packageDigest}` : 'SHA-256 открытого текста'}>
+                        <Icon name="lock" size={12} /> {(v.packageDigest ?? v.checksum).slice(0, 12)}…
                       </span>
                     </div>
                   ))
@@ -134,21 +174,23 @@ export default function KimPage() {
                 Импорт варианта
               </h2>
               <span className="small muted">
-                JSON по схеме <span className="mono">kim.schema.json</span>. Вариант проверяется по схеме, формату эталонов и критериям и принимается только целиком.
+                ZIP из редактора КИМ или одиночный JSON по схеме <span className="mono">kim.schema.json</span>.
               </span>
             </div>
             <label className="btn">
               <Icon name="upload" /> Выбрать файл
-              <input type="file" accept="application/json,.json" className="sr-only" onChange={(e) => e.target.files?.[0]?.text().then((t) => { setJson(t); setCheck(undefined); })} />
+              <input type="file" accept=".zip,.json,application/zip,application/json" disabled={busy} className="sr-only" onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; void choose(file); }} />
             </label>
           </div>
           <div className="stack">
-            <textarea className="textarea mono" rows={10} style={{ fontSize: 13 }} value={json} onChange={(e) => { setJson(e.target.value); setCheck(undefined); }} placeholder='{ "variant": 3, "examCode": "math-profile", "title": "…", "tasks": [ … ] }' aria-label="Содержимое варианта в формате JSON" />
+            {zip ? (
+              <div className="row wrap"><span>{zip.name}</span><button type="button" className="btn" disabled={busy} onClick={() => { setZip(undefined); setCheck(undefined); }}>Очистить</button></div>
+            ) : <textarea disabled={busy} className="textarea mono" rows={10} style={{ fontSize: 13 }} value={json} onChange={(e) => { setJson(e.target.value); setCheck(undefined); }} placeholder='{ "variant": 3, "examCode": "math-profile", "title": "…", "tasks": [ … ] }' aria-label="Содержимое варианта в формате JSON" />}
             <div className="row wrap" style={{ '--gap': '8px' } as React.CSSProperties}>
-              <button type="button" className="btn" onClick={validate} disabled={!json.trim()}>
+              <button type="button" className="btn" onClick={validate} disabled={busy || (!zip && !json.trim())}>
                 <Icon name="checkCircle" /> Проверить
               </button>
-              <button type="button" className="btn btn-primary" onClick={importIt} disabled={!check?.valid}>
+              <button type="button" className="btn btn-primary" onClick={importIt} disabled={busy || !check?.valid}>
                 Импортировать
               </button>
             </div>

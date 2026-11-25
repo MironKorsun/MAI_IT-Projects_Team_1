@@ -9,6 +9,7 @@ import { sessionDto, displayName } from '../views';
 import { buildVariant, loadReferences, validateVariant, type RawVariant } from '../kim/loader';
 import { refreshSessionStatus, recalcAttempts, validateScale, scaleFor } from '../grading';
 import { addWorkingDays, nowIso, secret, sha256, uuid } from '../util';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config } from '../config';
 
@@ -26,7 +27,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     Object.entries(EXAMS).map(([code, e]) => ({
       code,
       ...e,
-      variants: db.variants.filter((v) => v.examCode === code).map((v) => ({ id: v.id, number: v.number, title: v.title, tasks: v.keys.length, importedAt: v.importedAt, checksum: v.checksum })),
+      variants: db.variants.filter((v) => v.examCode === code).map((v) => ({ id: v.id, number: v.number, title: v.title, tasks: v.keys.length, importedAt: v.importedAt, checksum: v.checksum, packageVersion: v.packageVersion, packageDigest: v.packageDigest })),
     })),
   );
 
@@ -45,6 +46,7 @@ export default async function adminRoutes(app: FastifyInstance) {
       date: string;
       startLocal: string;
       variantIds: string[];
+      scaleVersion?: string;
       proctoring: boolean;
       rooms: { ppeId: string; number: string; seats: number; organizerIds?: string[] }[];
     };
@@ -61,7 +63,8 @@ export default async function adminRoutes(app: FastifyInstance) {
             examCode: { type: 'string' },
             date: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
             startLocal: { type: 'string', pattern: '^\\d{2}:\\d{2}$' },
-            variantIds: { type: 'array', items: { type: 'string' } },
+            variantIds: { type: 'array', uniqueItems: true, items: { type: 'string' } },
+            scaleVersion: { type: 'string', minLength: 1, maxLength: 64 },
             proctoring: { type: 'boolean' },
             rooms: {
               type: 'array',
@@ -91,6 +94,22 @@ export default async function adminRoutes(app: FastifyInstance) {
         const v = byId(db.variants, id);
         if (!v || v.examCode !== b.examCode) errors.push({ pointer: `/variantIds/${i}`, detail: 'Вариант не относится к экзамену' });
       });
+      const instructions = b.variantIds.map(id => byId(db.variants, id)?.instruction);
+      if (instructions.some(Boolean)) {
+        const legacy = instructions.some(x => !x)
+          ? readFileSync(resolve(config.kimDir, 'math-profile-2026/instruction.md'), 'utf8').replace(/\r\n/g, '\n').trim() : undefined;
+        if (new Set(instructions.map(x => x ?? legacy)).size > 1)
+          errors.push({ pointer: '/variantIds', detail: 'Для одной сессии выберите варианты с одинаковой инструкцией' });
+      }
+      const selectedVariants = b.variantIds.map(id => byId(db.variants, id));
+      if (b.scaleVersion) {
+        const year = Number(b.date.slice(0, 4));
+        const scale = db.scales.find(s => s.examCode === b.examCode && s.year === year && s.version === b.scaleVersion);
+        if (!scale || selectedVariants.some(v => v && v.keys.reduce((sum, t) => sum + t.maxScore, 0) !== scale.values.length - 1))
+          errors.push({ pointer: '/scaleVersion', detail: 'Шкала должна соответствовать предмету, году и максимуму выбранных вариантов' });
+      } else if (selectedVariants.some(v => v?.packageDigest)) {
+        errors.push({ pointer: '/scaleVersion', detail: 'Для импортированного пакета выберите версию шкалы' });
+      }
       if (!b.rooms.length) errors.push({ pointer: '/rooms', detail: 'Не назначены аудитории' });
       b.rooms.forEach((r, i) => {
         if (!byId(db.ppes, r.ppeId)) errors.push({ pointer: `/rooms/${i}/ppeId`, detail: 'ППЭ не найден' });
@@ -106,6 +125,7 @@ export default async function adminRoutes(app: FastifyInstance) {
         tz: ppe.tz,
         durationMin: exam.durationMin,
         variantIds: b.variantIds,
+        scaleVersion: b.scaleVersion,
         roomIds: [],
         proctoring: b.proctoring,
         status: 'preparation',
@@ -431,7 +451,10 @@ export default async function adminRoutes(app: FastifyInstance) {
       db.scales.push({ examCode: req.params.code, year, version, kind: exam.scale, values: req.body.values, threshold: req.body.threshold, loadedAt: nowIso() });
       audit({ type: 'scale.loaded', category: 'Администрирование', actorRole: req.principal!.roles.join(','), actorId: req.principal!.sub, object: `${exam.title} ${year}`, details: `версия ${version}` });
       if (prev) {
-        const affected = db.results.filter((r) => byId(db.sessions, r.sessionId)?.examCode === req.params.code && byId(db.sessions, r.sessionId)?.date.startsWith(String(year))).map((r) => r.attemptId);
+        const affected = db.results.filter(r => {
+          const session = byId(db.sessions, r.sessionId);
+          return session && !session.scaleVersion && session.examCode === req.params.code && session.date.startsWith(String(year));
+        }).map(r => r.attemptId);
         recalcAttempts(affected, `Новая версия шкалы ${version}`);
       } else for (const s of db.sessions) refreshSessionStatus(s.id);
       persist();

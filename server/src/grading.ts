@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { db, byId, persist, type Attempt, type Result, type Scale, type StoredTask } from './db';
+import { db, byId, persist, type Attempt, type ExamSession, type Result, type Scale, type StoredTask } from './db';
 import { audit } from './audit';
 import { config } from './config';
 import { nowIso } from './util';
@@ -48,6 +48,12 @@ export function compareShort(task: StoredTask, value: string): { score: number; 
 
 export function scaleFor(examCode: string, year: number) {
   return db.scales.filter((s) => s.examCode === examCode && s.year === year).at(-1);
+}
+
+export function sessionScale(session: ExamSession) {
+  const year = Number(session.date.slice(0, 4));
+  if (!session.scaleVersion) return scaleFor(session.examCode, year);
+  return db.scales.find(s => s.examCode === session.examCode && s.year === year && s.version === session.scaleVersion);
 }
 
 /**
@@ -118,8 +124,7 @@ export function tryCalculate(attempt: Attempt, reason = 'Первичный ра
     const r = compareShort(t, attempt.answers[t.id]?.value ?? '');
     tasks.push({ taskId: t.id, number: t.number, part: 1, score: r.score, maxScore: t.maxScore, protocol: r.protocol });
   }
-  const year = Number(session.date.slice(0, 4));
-  const scale = scaleFor(session.examCode, year);
+  const scale = sessionScale(session);
   const primary = tasks.reduce((s, t) => s + t.score, 0);
   const maxPrimary = variant.keys.reduce((s, t) => s + t.maxScore, 0);
   const existing = db.results.find((r) => r.attemptId === attempt.id);
@@ -186,10 +191,9 @@ export function refreshSessionStatus(sessionId: string) {
   const gradable = attempts.filter((a) => ['finished', 'timeExpired'].includes(a.state));
   const open = attempts.some((a) => ['assigned', 'waiting', 'loading', 'inProgress'].includes(a.state));
   const calculated = gradable.every((a) => db.results.some((r) => r.attemptId === a.id));
-  const year = Number(session.date.slice(0, 4));
   const prev = session.resultsStatus;
   if (open || !gradable.length || !calculated) session.resultsStatus = 'processing';
-  else if (scaleFor(session.examCode, year)) session.resultsStatus = 'approved';
+  else if (sessionScale(session) && gradable.every(a => db.results.some(r => r.attemptId === a.id && r.scaleVersion !== '—'))) session.resultsStatus = 'approved';
   else session.resultsStatus = 'calculated';
   if (prev !== session.resultsStatus) {
     for (const r of db.results.filter((x) => x.sessionId === sessionId && x.status !== 'published'))

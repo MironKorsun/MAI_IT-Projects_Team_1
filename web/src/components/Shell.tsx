@@ -21,6 +21,7 @@ const NAV: NavDef[] = [
   { to: '/staff/admin/sessions', label: 'Экзаменационные сессии', icon: 'layers', roles: ['admin'], section: 'Администрирование' },
   { to: '/staff/admin/participants', label: 'Участники', icon: 'user', roles: ['admin'], section: 'Администрирование' },
   { to: '/staff/admin/staff', label: 'Персонал и роли', icon: 'shield', roles: ['admin'], section: 'Администрирование' },
+  { to: '/staff/kim-editor', label: 'Редактор КИМ', icon: 'book', roles: ['admin', 'observer'], section: 'Материалы' },
   { to: '/staff/admin/kim', label: 'КИМ и шкалы', icon: 'book', roles: ['admin'], section: 'Администрирование' },
   { to: '/staff/admin/appeals', label: 'Апелляции', icon: 'message', roles: ['admin'], section: 'Администрирование' },
   { to: '/staff/monitor', label: 'Сводная панель', icon: 'monitor', roles: ['observer', 'admin'], section: 'Мониторинг' },

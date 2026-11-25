@@ -69,3 +69,13 @@
 `kim/math-profile-2026`: `manifest.json`, `variant_plan.json` (12 позиций с кратким ответом, макс. 12 баллов), `branching_tree.json`
 (глубина 2, 4 пути), `tasks/variant-*.json`, `reference_materials/references.json`, `instruction.md`;
 схема `kim/schema/kim.schema.json` (JSON Schema 2020-12).
+
+### Редактор и импорт банка профильной математики
+
+| Требование | Реализация | Проверка |
+|---|---|---|
+| РКИМ FR-03–FR-05, FR-07–FR-13 | `kim/math-profile-bank`, `kim/bank.ts`, `KimEditor.tsx` | `npm run kim:validate`, проверка допустимых позиций и подбор из банка |
+| РКИМ FR-17–FR-21, NFR-12, КЧ FR-03 | Предпросмотр и экран участника используют `TaskContent.tsx`. Справка и инструктаж берутся из пакета | `package.test.ts`, браузерный сценарий для заданий 1 и 7 |
+| РКИМ FR-23/24 в редакции ИЗМ.1, AC-07/08/10, СЧ FR-28/29 | `kim/package.ts`, `routes/kim.ts` проверяют схемы, плана, дерева, состава ZIP и SHA‑256. Уникальные версии пакетов в PostgreSQL | `package.test.ts`, `store.pg.test.ts`, `npm run kim:demo` |
+| СЧ FR-30/31, КЧ FR-04 | Чертежи выдаются внутри AES‑GCM варианта. Ключ доступен с началом попытки | `package.test.ts`, выдача и расшифровка № 666 |
+| СЧ FR-35, АО FR-03 | Версия шкалы закрепляется за сессией с ZIP. Расчёт, результаты и аналитика используют эту версию | `package.test.ts`, экзамен и расчёт после загрузки новой шкалы |

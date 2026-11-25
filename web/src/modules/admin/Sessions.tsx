@@ -114,7 +114,7 @@ interface ExamDir {
   code: string;
   title: string;
   durationMin: number;
-  variants: { id: string; number: number; title: string }[];
+  variants: { id: string; number: number; title: string; packageVersion?: string }[];
 }
 interface Ppe {
   id: string;
@@ -132,9 +132,10 @@ interface Staff {
 function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const toast = useToast();
   const exams = useLoad(() => staffApi.get<ExamDir[]>('/exams'));
+  const scales = useLoad(() => staffApi.get<{ examCode: string; year: number; version: string; threshold: number }[]>('/scales'));
   const ppes = useLoad(() => staffApi.get<Ppe[]>('/ppes'));
   const staff = useLoad(() => staffApi.get<Staff[]>('/staff'));
-  const [f, setF] = useState({ examCode: 'math-profile', date: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10), startLocal: '10:00', proctoring: true, variantIds: [] as string[], ppeId: '', number: '301', seats: 15, organizerId: '' });
+  const [f, setF] = useState({ examCode: 'math-profile', date: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10), startLocal: '10:00', proctoring: true, variantIds: [] as string[], scaleVersion: '', ppeId: '', number: '301', seats: 15, organizerId: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [err, setErr] = useState<unknown>();
   const exam = exams.data?.find((e) => e.code === f.examCode);
@@ -148,6 +149,7 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
         startLocal: f.startLocal,
         proctoring: f.proctoring,
         variantIds: f.variantIds,
+        scaleVersion: f.scaleVersion || undefined,
         rooms: f.ppeId ? [{ ppeId: f.ppeId, number: f.number, seats: f.seats, organizerIds: f.organizerId ? [f.organizerId] : [] }] : [],
       });
       toast('Сессия создана в статусе «Подготовка»', 'ok');
@@ -177,7 +179,7 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
       <div className="form-grid">
         <label className="field full">
           <span className="label">Экзамен</span>
-          <select className="select" value={f.examCode} onChange={(e) => setF({ ...f, examCode: e.target.value, variantIds: [] })}>
+          <select className="select" value={f.examCode} onChange={(e) => setF({ ...f, examCode: e.target.value, variantIds: [], scaleVersion: '' })}>
             {exams.data?.map((e) => (
               <option key={e.code} value={e.code}>
                 {e.title} · {fmtMinutes(e.durationMin)}
@@ -187,11 +189,21 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
         </label>
         <label className="field">
           <span className="label">Дата</span>
-          <input className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+          <input className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value, scaleVersion: '' })} />
         </label>
         <label className="field">
           <span className="label">Начало (местное)</span>
           <input className="input" type="time" value={f.startLocal} onChange={(e) => setF({ ...f, startLocal: e.target.value })} />
+        </label>
+        <label className="field full">
+          <span className="label">Версия шкалы</span>
+          <select className="select" value={f.scaleVersion} onChange={e => setF({ ...f, scaleVersion: e.target.value })} aria-invalid={!!errors.scaleVersion}>
+            <option value="">Выберите версию для пакета КИМ</option>
+            {scales.data?.filter(s => s.examCode === f.examCode && s.year === Number(f.date.slice(0, 4))).map(s => (
+              <option key={s.version} value={s.version}>{s.version} · порог {s.threshold}</option>
+            ))}
+          </select>
+          {errors.scaleVersion && <span className="error-text">{errors.scaleVersion}</span>}
         </label>
         <fieldset className="field full" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <legend className="label" style={{ padding: 0, marginBottom: 4 }}>
@@ -202,7 +214,7 @@ function CreateSession({ onClose, onCreated }: { onClose: () => void; onCreated:
               {exam.variants.map((v) => (
                 <label key={v.id} className="check">
                   <input type="checkbox" checked={f.variantIds.includes(v.id)} onChange={(e) => setF({ ...f, variantIds: e.target.checked ? [...f.variantIds, v.id] : f.variantIds.filter((x) => x !== v.id) })} />
-                  {v.title}
+                  {v.title}{v.packageVersion ? ` · КИМ ${v.packageVersion}` : ''}
                 </label>
               ))}
             </div>

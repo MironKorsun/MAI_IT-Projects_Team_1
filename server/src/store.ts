@@ -57,7 +57,7 @@ export const TABLES: readonly TableSpec[] = [
     collection: 'variants',
     pk: ['id'],
     key: byIdKey,
-    cols: [t('id'), t('examCode'), int('number'), t('title'), js('encrypted'), js('wrappedKey'), js('keys'), ts('importedAt'), t('checksum')],
+    cols: [t('id'), t('examCode'), int('number'), t('title'), js('encrypted'), js('wrappedKey'), js('keys'), ts('importedAt'), t('checksum'), t('packageDigest'), t('packageVersion'), t('instruction')],
   },
   {
     table: 'exam_sessions',
